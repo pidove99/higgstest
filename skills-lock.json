@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "kling-3-prompting": {
+      "source": "aedev-tools/kling-3-prompting-skill",
+      "sourceType": "github",
+      "skillPath": "skills/kling-3-prompting/SKILL.md",
+      "computedHash": "cda5fb886860dcd53a6cd9326f48b58aa1ddb2653e51288ef8335fa09c9b078f"
+    }
+  }
+}
