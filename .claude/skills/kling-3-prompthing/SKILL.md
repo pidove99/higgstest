@@ -1,5 +1,5 @@
 ---
-name: kling-3-prompting
+name: kling-3-prompthing
 description: >
   Write better prompts for Kling 3.0 AI video generation. Use when the user wants
   to create, write, improve, or refine prompts — text-to-video, image-to-video,
