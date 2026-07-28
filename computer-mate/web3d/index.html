@@ -97,14 +97,54 @@
     var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(app.clientWidth, app.clientHeight);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.15;
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     app.appendChild(renderer.domElement);
 
-    // ---------- lighting (soft studio) ----------
-    scene.add(new THREE.HemisphereLight(0xffffff, 0x9aa0a8, 0.95));
-    var key = new THREE.DirectionalLight(0xffffff, 0.85);
-    key.position.set(-3, 5, 5);
+    // ---------- image-based lighting: procedural studio environment ----------
+    var envMap = null;
+    (function () {
+      var pmrem = new THREE.PMREMGenerator(renderer);
+      var envScene = new THREE.Scene();
+      // soft vertical gradient dome
+      var c = document.createElement("canvas"); c.width = 8; c.height = 256;
+      var g = c.getContext("2d");
+      var grad = g.createLinearGradient(0, 0, 0, 256);
+      grad.addColorStop(0.0, "#f4f6f9"); grad.addColorStop(0.5, "#d4dbe3"); grad.addColorStop(1.0, "#aab4bf");
+      g.fillStyle = grad; g.fillRect(0, 0, 8, 256);
+      var domeTex = new THREE.CanvasTexture(c);
+      envScene.add(new THREE.Mesh(
+        new THREE.SphereGeometry(50, 24, 16),
+        new THREE.MeshBasicMaterial({ map: domeTex, side: THREE.BackSide })
+      ));
+      // bright soft-boxes create specular highlights on the metallic neck
+      function box(x, y, z, s, col) {
+        var m = new THREE.Mesh(new THREE.PlaneGeometry(s, s), new THREE.MeshBasicMaterial({ color: col }));
+        m.position.set(x, y, z); m.lookAt(0, 0, 0); envScene.add(m);
+      }
+      box(-9, 11, 9, 10, 0xffffff);
+      box(10, 6, 7, 6, 0xe6eeff);
+      box(2, -7, -11, 8, 0x9fb0c4);
+      envMap = pmrem.fromScene(envScene, 0.04).texture;
+      scene.environment = envMap;
+      pmrem.dispose();
+    })();
+
+    // ---------- lighting (soft studio + shadow key) ----------
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x9aa0a8, 0.35));
+    var key = new THREE.DirectionalLight(0xffffff, 1.7);
+    key.position.set(-4, 6.5, 5);
+    key.castShadow = true;
+    key.shadow.mapSize.set(1024, 1024);
+    key.shadow.camera.near = 1; key.shadow.camera.far = 30;
+    key.shadow.camera.left = -5; key.shadow.camera.right = 5;
+    key.shadow.camera.top = 5; key.shadow.camera.bottom = -5;
+    key.shadow.bias = -0.0008; key.shadow.radius = 6;
     scene.add(key);
-    var rim = new THREE.DirectionalLight(0xbcd3ff, 0.4);
+    var rim = new THREE.DirectionalLight(0xbcd3ff, 0.55);
     rim.position.set(4, 2, -4);
     scene.add(rim);
 
@@ -136,6 +176,7 @@
       grad.addColorStop(1.0, "#8a79b8");
       g.fillStyle = grad; g.fillRect(0, 0, 64, 128);
       var t = new THREE.CanvasTexture(c);
+      t.encoding = THREE.sRGBEncoding;
       t.needsUpdate = true;
       return t;
     }
@@ -154,8 +195,16 @@
     var eyeMat    = new THREE.MeshStandardMaterial({ color: 0x0c1117, roughness: 0.25, metalness: 0.1 });
     var whiteMat  = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
     var cereMat   = mat("#eef1f6", 0.6, 0.0);
-    var irisMat   = new THREE.MeshStandardMaterial({ map: irisTexture(), roughness: 0.35, metalness: 0.35 });
-    var tieMat    = mat("#2f8375", 0.6, 0.1);
+    var irisMat   = new THREE.MeshStandardMaterial({
+      map: irisTexture(), roughness: 0.2, metalness: 0.85,
+      emissive: new THREE.Color("#123f39"), emissiveIntensity: 0.25
+    });
+    var tieMat    = mat("#2f8375", 0.35, 0.3);
+
+    // reflection strength per material (uses scene.environment)
+    [greyBody, greyHead, greyWing, greyDark, bellyMat].forEach(function (m) { m.envMapIntensity = 0.55; });
+    beakMat.envMapIntensity = 0.7; footMat.envMapIntensity = 0.6;
+    tieMat.envMapIntensity = 1.0; irisMat.envMapIntensity = 1.8;
 
     // body (chunky, bottom-heavy blob)
     ellipsoid(pigeon, 1, 1.12, 1.18, 1.15, 0, -0.15, 0, greyBody);
@@ -257,20 +306,36 @@
     }
     foot(-1); foot(1);
 
-    // soft contact shadow
+    // real soft shadow cast onto the ground
+    var ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(16, 16),
+      new THREE.ShadowMaterial({ opacity: 0.26 })
+    );
+    ground.rotation.x = -Math.PI / 2; ground.position.y = -1.55; ground.receiveShadow = true;
+    scene.add(ground);
+
+    // let every part of the bird cast/receive shadows
+    pigeon.traverse(function (o) { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+
+    // soft glow aura behind the bird (fake bloom)
+    var glow = null;
     (function () {
-      var c = document.createElement("canvas"); c.width = c.height = 128;
+      var c = document.createElement("canvas"); c.width = c.height = 256;
       var g = c.getContext("2d");
-      var rg = g.createRadialGradient(64, 64, 4, 64, 64, 60);
-      rg.addColorStop(0, "rgba(40,50,65,0.35)"); rg.addColorStop(1, "rgba(40,50,65,0)");
-      g.fillStyle = rg; g.fillRect(0, 0, 128, 128);
+      var rg = g.createRadialGradient(128, 128, 8, 128, 128, 128);
+      rg.addColorStop(0.0, "rgba(126,224,209,0.55)");
+      rg.addColorStop(0.4, "rgba(110,180,220,0.22)");
+      rg.addColorStop(1.0, "rgba(126,224,209,0)");
+      g.fillStyle = rg; g.fillRect(0, 0, 256, 256);
       var tex = new THREE.CanvasTexture(c);
-      var sh = new THREE.Mesh(
-        new THREE.PlaneGeometry(3.4, 3.4),
-        new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false })
-      );
-      sh.rotation.x = -Math.PI / 2; sh.position.y = -1.55;
-      scene.add(sh);
+      glow = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: tex, transparent: true, blending: THREE.AdditiveBlending,
+        depthWrite: false, depthTest: false, opacity: 0.55
+      }));
+      glow.scale.set(6.5, 6.5, 1);
+      glow.position.set(0, 0.1, 0);
+      glow.renderOrder = -1;
+      scene.add(glow);
     })();
 
     // ---------- middle-button orbit controls ----------
@@ -394,6 +459,11 @@
       pigeon.rotation.y = curYaw;
       pigeon.rotation.x = curPitch;
       pigeon.position.y = Math.sin(t * 1.4) * 0.04;   // idle bob
+      if (glow) {
+        glow.material.opacity = 0.5 + Math.sin(t * 1.6) * 0.12;
+        var s = 6.4 + Math.sin(t * 1.6) * 0.25;
+        glow.scale.set(s, s, 1);
+      }
       renderer.render(scene, camera);
     }
     animate();
