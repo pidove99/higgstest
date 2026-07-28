@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Computer Mate · 마테</title>
+<style>
+  :root {
+    --ink: #1c2430;
+    --slate: #3a4a5e;
+    --teal: #4db6a4;
+    --teal-deep: #2f8375;
+    --paper: #f3f5f7;
+    --shadow: rgba(20, 30, 45, 0.28);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Pretendard",
+      "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    /* Transparent-ish desk feel. When embedded, a soft gradient stands in
+       for the desktop so the mascot still reads on any background. */
+    background:
+      radial-gradient(1200px 800px at 80% -10%, #e9eef3 0%, transparent 60%),
+      radial-gradient(1000px 700px at -10% 110%, #e4ebf1 0%, transparent 55%),
+      linear-gradient(160deg, #eef2f6 0%, #dfe6ee 100%);
+    color: var(--ink);
+    user-select: none;
+  }
+
+  /* ---------- The mate ---------- */
+  #mate {
+    position: fixed;
+    left: 60px;
+    bottom: 40px;
+    width: 150px;
+    z-index: 10;
+    cursor: grab;
+    touch-action: none;
+    filter: drop-shadow(0 18px 22px var(--shadow));
+  }
+  #mate.dragging { cursor: grabbing; }
+
+  .float {
+    animation: float 5.5s ease-in-out infinite;
+    transform-origin: center bottom;
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50%      { transform: translateY(-9px) rotate(-0.6deg); }
+  }
+
+  /* Eyes track the cursor via JS-set CSS vars */
+  .pupil {
+    transition: transform 0.12s ease-out;
+    transform: translate(var(--px, 0px), var(--py, 0px));
+  }
+  .lid {
+    transform-origin: center;
+    transform: scaleY(0);
+    transition: transform 0.09s ease-in;
+  }
+  #mate.blink .lid { transform: scaleY(1); }
+
+  /* ---------- Speech bubble ---------- */
+  #bubble {
+    position: fixed;
+    max-width: 260px;
+    padding: 14px 16px;
+    background: #ffffff;
+    color: var(--ink);
+    border-radius: 16px 16px 16px 4px;
+    box-shadow: 0 12px 30px rgba(20, 30, 45, 0.18);
+    font-size: 14.5px;
+    line-height: 1.5;
+    z-index: 20;
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+    transition: opacity 0.28s ease, transform 0.28s cubic-bezier(.2,.9,.3,1.2);
+    pointer-events: none;
+  }
+  #bubble.show { opacity: 1; transform: translateY(0) scale(1); }
+  #bubble .tag {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--teal-deep);
+    margin-bottom: 5px;
+    font-weight: 700;
+  }
+
+  /* ---------- Toolbar / dock ---------- */
+  #dock {
+    position: fixed;
+    top: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    padding: 7px 9px;
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.6);
+    border-radius: 999px;
+    box-shadow: 0 8px 24px rgba(20,30,45,0.12);
+    z-index: 30;
+  }
+  #dock button {
+    border: none;
+    background: transparent;
+    color: var(--slate);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 7px 13px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 0.18s, color 0.18s;
+  }
+  #dock button:hover { background: rgba(77,182,164,0.16); color: var(--teal-deep); }
+  #dock button.active { background: var(--teal); color: #fff; }
+
+  /* ---------- Focus timer chip ---------- */
+  #focus {
+    position: fixed;
+    bottom: 26px;
+    right: 26px;
+    display: none;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: rgba(28, 36, 48, 0.92);
+    color: #eef3f6;
+    border-radius: 14px;
+    box-shadow: 0 14px 34px rgba(20,30,45,0.28);
+    z-index: 30;
+    font-variant-numeric: tabular-nums;
+  }
+  #focus.show { display: flex; }
+  #focus .clock { font-size: 22px; font-weight: 700; letter-spacing: 0.02em; }
+  #focus .label { font-size: 11px; color: var(--teal); text-transform: uppercase; letter-spacing: 0.1em; }
+  #focus button {
+    border: 1px solid rgba(255,255,255,0.25);
+    background: transparent;
+    color: #eef3f6;
+    border-radius: 8px;
+    padding: 5px 10px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  #focus button:hover { background: rgba(255,255,255,0.12); }
+
+  /* ---------- Intro hint ---------- */
+  #hint {
+    position: fixed;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 12px;
+    color: #6a7787;
+    z-index: 5;
+    transition: opacity 0.6s;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    html, body {
+      background:
+        radial-gradient(1200px 800px at 80% -10%, #1a2330 0%, transparent 60%),
+        linear-gradient(160deg, #131a24 0%, #0d131b 100%);
+      color: #eef3f6;
+    }
+    #bubble { background: #1e2836; color: #eef3f6; box-shadow: 0 12px 30px rgba(0,0,0,0.5); }
+    #bubble .tag { color: var(--teal); }
+    #dock { background: rgba(30,40,54,0.7); border-color: rgba(255,255,255,0.08); }
+    #dock button { color: #b8c4d2; }
+    #hint { color: #7f8da0; }
+  }
+</style>
+</head>
+<body>
+
+  <div id="dock">
+    <button data-mode="chat" class="active">대화</button>
+    <button data-mode="focus">집중</button>
+    <button data-mode="status">상태</button>
+  </div>
+
+  <!-- The mate character: a calm pigeon (SVG) -->
+  <svg id="mate" class="float" viewBox="0 0 160 178" xmlns="http://www.w3.org/2000/svg" aria-label="컴퓨터 메이트 비둘기 마테">
+    <defs>
+      <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#9aa7b8"/>
+        <stop offset="1" stop-color="#6f7d90"/>
+      </linearGradient>
+      <linearGradient id="head" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#a3b0c0"/>
+        <stop offset="1" stop-color="#7c8a9c"/>
+      </linearGradient>
+      <linearGradient id="belly" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#c9d2dd"/>
+        <stop offset="1" stop-color="#aab6c4"/>
+      </linearGradient>
+      <linearGradient id="iris" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#4db6a4"/>
+        <stop offset="0.55" stop-color="#5aa3c9"/>
+        <stop offset="1" stop-color="#8f6fd0"/>
+      </linearGradient>
+      <linearGradient id="beak" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#f0a878"/>
+        <stop offset="1" stop-color="#e08a52"/>
+      </linearGradient>
+      <radialGradient id="glow" cx="0.5" cy="0.42" r="0.7">
+        <stop offset="0" stop-color="#4db6a4" stop-opacity="0.9"/>
+        <stop offset="1" stop-color="#4db6a4" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+
+    <!-- soft glow behind -->
+    <ellipse cx="80" cy="92" rx="72" ry="76" fill="url(#glow)" opacity="0.30"/>
+
+    <!-- ground shadow -->
+    <ellipse cx="80" cy="170" rx="40" ry="7" fill="#243140" opacity="0.18"/>
+
+    <!-- tail feathers (behind body) -->
+    <path d="M44 118 q-16 22 -22 40 q18 -6 30 -14 z" fill="#5c6a7d"/>
+    <path d="M50 122 l-10 30 l14 -8 z" fill="#6d7c90"/>
+
+    <!-- legs / feet -->
+    <g stroke="#e08a52" stroke-width="3.4" stroke-linecap="round">
+      <line x1="70" y1="150" x2="70" y2="164"/>
+      <line x1="90" y1="150" x2="90" y2="164"/>
+    </g>
+    <g stroke="#e08a52" stroke-width="2.6" stroke-linecap="round">
+      <line x1="70" y1="164" x2="63" y2="168"/><line x1="70" y1="164" x2="77" y2="168"/>
+      <line x1="90" y1="164" x2="83" y2="168"/><line x1="90" y1="164" x2="97" y2="168"/>
+    </g>
+
+    <!-- body -->
+    <ellipse cx="80" cy="112" rx="52" ry="46" fill="url(#body)"/>
+    <!-- belly highlight -->
+    <ellipse cx="80" cy="124" rx="34" ry="30" fill="url(#belly)" opacity="0.9"/>
+
+    <!-- folded wings -->
+    <path d="M32 104 q-6 30 16 44 q6 -30 -2 -50 z" fill="#5f6d80"/>
+    <path d="M128 104 q6 30 -16 44 q-6 -30 2 -50 z" fill="#5f6d80"/>
+    <path d="M34 108 q-2 22 12 34" stroke="#4e5b6d" stroke-width="1.4" fill="none" opacity="0.6"/>
+    <path d="M126 108 q2 22 -12 34" stroke="#4e5b6d" stroke-width="1.4" fill="none" opacity="0.6"/>
+
+    <!-- iridescent neck band (the pigeon signature) -->
+    <path d="M52 82 q28 22 56 0 q-4 16 -28 18 q-24 -2 -28 -18 z" fill="url(#iris)" opacity="0.9"/>
+
+    <!-- tiny bowtie: the "professional" cue -->
+    <path d="M80 96 l-11 -7 v14 z" fill="#2f8375"/>
+    <path d="M80 96 l11 -7 v14 z" fill="#2f8375"/>
+    <circle cx="80" cy="96" r="3.4" fill="#256b60"/>
+
+    <!-- head -->
+    <circle cx="80" cy="52" r="36" fill="url(#head)"/>
+
+    <!-- eyes -->
+    <g>
+      <circle cx="66" cy="48" r="9.5" fill="#fbfdff"/>
+      <circle cx="66" cy="48" r="8" fill="#12202b"/>
+      <circle class="pupil" cx="66" cy="48" r="5" fill="#f4a63c"/>
+      <circle cx="66" cy="48" r="2.4" fill="#0c151d"/>
+      <circle cx="68" cy="46" r="1.5" fill="#eafff9"/>
+      <rect class="lid lid-l" x="55" y="37" width="22" height="22" rx="10" fill="url(#head)"/>
+    </g>
+    <g>
+      <circle cx="94" cy="48" r="9.5" fill="#fbfdff"/>
+      <circle cx="94" cy="48" r="8" fill="#12202b"/>
+      <circle class="pupil" cx="94" cy="48" r="5" fill="#f4a63c"/>
+      <circle cx="94" cy="48" r="2.4" fill="#0c151d"/>
+      <circle cx="96" cy="46" r="1.5" fill="#eafff9"/>
+      <rect class="lid lid-r" x="83" y="37" width="22" height="22" rx="10" fill="url(#head)"/>
+    </g>
+
+    <!-- beak -->
+    <path d="M80 58 q-8 3 -6 10 q6 3 12 0 q2 -7 -6 -10 z" fill="url(#beak)"/>
+    <ellipse cx="80" cy="59" rx="5" ry="2.4" fill="#c9743f"/>
+    <circle cx="77.5" cy="59" r="0.9" fill="#8a4a24"/>
+    <circle cx="82.5" cy="59" r="0.9" fill="#8a4a24"/>
+  </svg>
+
+  <div id="bubble"><span class="tag">마테</span><span id="bubble-text"></span></div>
+
+  <div id="focus">
+    <div>
+      <div class="label" id="focus-label">집중 세션</div>
+      <div class="clock" id="focus-clock">25:00</div>
+    </div>
+    <button id="focus-toggle">시작</button>
+    <button id="focus-reset">리셋</button>
+  </div>
+
+  <div id="hint">마테를 클릭하면 말을 건네고, 드래그하면 자리를 옮길 수 있어요.</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var mate = document.getElementById("mate");
+  var bubble = document.getElementById("bubble");
+  var bubbleText = document.getElementById("bubble-text");
+  var hint = document.getElementById("hint");
+
+  /* ---------------- Speech lines (calm professional) ---------------- */
+  var lines = {
+    chat: [
+      "천천히 가도 괜찮습니다. 한 번에 하나씩 정리해 보죠.",
+      "지금 가장 중요한 한 가지는 무엇인가요? 거기서부터 시작합시다.",
+      "막힐 때는 문제를 소리 내어 설명해 보세요. 절반은 그렇게 풀립니다.",
+      "완벽한 첫 줄보다, 고칠 수 있는 초안이 낫습니다.",
+      "잠깐 숨을 고르세요. 급할수록 한 걸음 물러서는 편이 빠릅니다.",
+      "방금 한 작업, 잘 하셨습니다. 다음으로 넘어가도 좋아요.",
+      "지금 어깨에 힘이 들어가 있진 않나요? 잠시 풀어 주세요."
+    ],
+    focus: [
+      "집중 세션을 준비했습니다. 준비되면 시작을 눌러 주세요.",
+      "이 25분은 온전히 한 가지에만 씁니다. 알림은 잠시 꺼 두죠.",
+      "타이머가 도는 동안 제가 지켜보고 있겠습니다."
+    ],
+    status: []
+  };
+
+  /* ---------------- Eye tracking ---------------- */
+  var pupils = mate.querySelectorAll(".pupil");
+  function trackEyes(clientX, clientY) {
+    var r = mate.getBoundingClientRect();
+    var cx = r.left + r.width * 0.5;
+    var cy = r.top + r.height * 0.42;
+    var dx = clientX - cx, dy = clientY - cy;
+    var dist = Math.hypot(dx, dy) || 1;
+    var max = 3.2;
+    var px = (dx / dist) * Math.min(max, dist / 40);
+    var py = (dy / dist) * Math.min(max, dist / 40);
+    pupils.forEach(function (p) {
+      p.style.setProperty("--px", px.toFixed(2) + "px");
+      p.style.setProperty("--py", py.toFixed(2) + "px");
+    });
+  }
+  window.addEventListener("mousemove", function (e) {
+    if (!dragging) trackEyes(e.clientX, e.clientY);
+  });
+
+  /* ---------------- Blinking ---------------- */
+  function scheduleBlink() {
+    var wait = 2600 + Math.random() * 4200;
+    setTimeout(function () {
+      mate.classList.add("blink");
+      setTimeout(function () {
+        mate.classList.remove("blink");
+        // occasional double blink
+        if (Math.random() < 0.25) {
+          setTimeout(function () {
+            mate.classList.add("blink");
+            setTimeout(function () { mate.classList.remove("blink"); }, 110);
+          }, 170);
+        }
+      }, 120);
+      scheduleBlink();
+    }, wait);
+  }
+  scheduleBlink();
+
+  /* ---------------- Speech bubble ---------------- */
+  var bubbleTimer = null;
+  function say(text, ms) {
+    bubbleText.textContent = text;
+    positionBubble();
+    bubble.classList.add("show");
+    if (bubbleTimer) clearTimeout(bubbleTimer);
+    if (ms !== 0) {
+      bubbleTimer = setTimeout(function () { bubble.classList.remove("show"); }, ms || 5200);
+    }
+  }
+  function positionBubble() {
+    var r = mate.getBoundingClientRect();
+    var bx = r.right - 10;
+    var by = r.top - 6;
+    // keep on screen
+    bx = Math.min(bx, window.innerWidth - 280);
+    by = Math.max(by, 12);
+    bubble.style.left = bx + "px";
+    bubble.style.top = by + "px";
+    // if mate is on the right half, flip bubble to the left
+    if (r.left > window.innerWidth * 0.55) {
+      bubble.style.left = Math.max(12, r.left - 250) + "px";
+    }
+  }
+
+  function randomLine(mode) {
+    var arr = lines[mode] || lines.chat;
+    if (!arr.length) return null;
+    return arr[Math.floor(Math.random() * arr.length)];
+  }
+
+  /* ---------------- Dragging ---------------- */
+  var dragging = false, offX = 0, offY = 0, moved = false;
+  function pointerDown(e) {
+    dragging = true; moved = false;
+    mate.classList.add("dragging");
+    mate.classList.remove("float");
+    var r = mate.getBoundingClientRect();
+    var p = e.touches ? e.touches[0] : e;
+    offX = p.clientX - r.left;
+    offY = p.clientY - r.top;
+    e.preventDefault();
+  }
+  function pointerMove(e) {
+    if (!dragging) return;
+    var p = e.touches ? e.touches[0] : e;
+    moved = true;
+    var x = p.clientX - offX;
+    var y = p.clientY - offY;
+    x = Math.max(0, Math.min(x, window.innerWidth - mate.offsetWidth));
+    y = Math.max(0, Math.min(y, window.innerHeight - mate.offsetHeight));
+    mate.style.left = x + "px";
+    mate.style.top = y + "px";
+    mate.style.bottom = "auto";
+    if (bubble.classList.contains("show")) positionBubble();
+  }
+  function pointerUp() {
+    if (!dragging) return;
+    dragging = false;
+    mate.classList.remove("dragging");
+    mate.classList.add("float");
+    if (!moved) onClick();
+  }
+  mate.addEventListener("mousedown", pointerDown);
+  mate.addEventListener("touchstart", pointerDown, { passive: false });
+  window.addEventListener("mousemove", pointerMove);
+  window.addEventListener("touchmove", pointerMove, { passive: false });
+  window.addEventListener("mouseup", pointerUp);
+  window.addEventListener("touchend", pointerUp);
+
+  /* ---------------- Click behaviour by mode ---------------- */
+  var mode = "chat";
+  function onClick() {
+    if (mode === "status") { say(statusLine(), 6000); return; }
+    if (mode === "focus")  { say(randomLine("focus"), 5200); return; }
+    say(randomLine("chat"), 5200);
+  }
+
+  /* ---------------- Status ---------------- */
+  function statusLine() {
+    var now = new Date();
+    var hh = String(now.getHours()).padStart(2, "0");
+    var mm = String(now.getMinutes()).padStart(2, "0");
+    var h = now.getHours();
+    var greet = h < 6 ? "깊은 밤이네요. 무리하지 마세요."
+      : h < 12 ? "좋은 아침입니다. 차분히 시작해 볼까요."
+      : h < 18 ? "오후입니다. 물 한 잔 어떠세요."
+      : "저녁이네요. 오늘도 수고 많으셨습니다.";
+    return "지금 " + hh + ":" + mm + ". " + greet;
+  }
+
+  /* ---------------- Dock ---------------- */
+  var focusPanel = document.getElementById("focus");
+  document.querySelectorAll("#dock button").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      document.querySelectorAll("#dock button").forEach(function (b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+      mode = btn.dataset.mode;
+      if (mode === "focus") { focusPanel.classList.add("show"); say(randomLine("focus"), 5000); }
+      else { focusPanel.classList.remove("show"); onClick(); }
+    });
+  });
+
+  /* ---------------- Focus timer (Pomodoro) ---------------- */
+  var TOTAL = 25 * 60;
+  var remain = TOTAL, ticking = false, tick = null, onBreak = false;
+  var clockEl = document.getElementById("focus-clock");
+  var labelEl = document.getElementById("focus-label");
+  var toggleBtn = document.getElementById("focus-toggle");
+  var resetBtn = document.getElementById("focus-reset");
+
+  function render() {
+    var m = String(Math.floor(remain / 60)).padStart(2, "0");
+    var s = String(remain % 60).padStart(2, "0");
+    clockEl.textContent = m + ":" + s;
+  }
+  function startTick() {
+    ticking = true; toggleBtn.textContent = "일시정지";
+    tick = setInterval(function () {
+      remain--;
+      if (remain <= 0) {
+        clearInterval(tick); ticking = false;
+        onBreak = !onBreak;
+        remain = onBreak ? 5 * 60 : TOTAL;
+        labelEl.textContent = onBreak ? "휴식 시간" : "집중 세션";
+        toggleBtn.textContent = "시작";
+        say(onBreak ? "한 세션을 마쳤습니다. 5분간 눈과 어깨를 쉬어 주세요."
+                    : "휴식이 끝났습니다. 다시 한 가지에 집중해 볼까요.", 6500);
+      }
+      render();
+    }, 1000);
+  }
+  toggleBtn.addEventListener("click", function () {
+    if (ticking) { clearInterval(tick); ticking = false; toggleBtn.textContent = "시작"; }
+    else startTick();
+  });
+  resetBtn.addEventListener("click", function () {
+    clearInterval(tick); ticking = false; onBreak = false;
+    remain = TOTAL; labelEl.textContent = "집중 세션"; toggleBtn.textContent = "시작"; render();
+  });
+  render();
+
+  /* ---------------- First greeting ---------------- */
+  setTimeout(function () { say("안녕하세요. 저는 마테예요. 옆에서 차분히 함께하겠습니다.", 6000); }, 900);
+  setTimeout(function () { if (hint) hint.style.opacity = "0"; }, 9000);
+})();
+</script>
+</body>
+</html>
