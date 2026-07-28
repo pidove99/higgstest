@@ -18,6 +18,20 @@
   - **상태**: 현재 시각과 시간대에 맞는 인사.
 - **라이트/다크 테마** 자동 대응.
 
+## 데스크톱 앱 (.exe / .dmg / .AppImage)
+
+바탕화면 위에 떠 있는 진짜 데스크톱 마스코트로 쓰려면 `desktop/` 의
+Electron 버전을 빌드하세요. 배경 투명 · 항상 위에 표시 · 트레이 상주입니다.
+
+```bash
+cd computer-mate/desktop
+npm install
+npm start        # 바로 실행
+npm run dist:win # Windows .exe 만들기
+```
+
+자세한 내용은 [`desktop/README.md`](desktop/README.md) 참고.
+
 ## 커스터마이징
 
 - 대사: `index.html` 안 `lines` 객체를 수정하세요.

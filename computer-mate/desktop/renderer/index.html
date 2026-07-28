@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>Computer Mate</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: transparent;               /* real desktop transparency */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Pretendard",
+      "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    user-select: none; -webkit-user-select: none;
+  }
+
+  #stage { position: relative; width: 100%; height: 100%; }
+
+  #mate {
+    position: absolute;
+    left: 50%; bottom: 6px;
+    transform: translateX(-50%);
+    width: 150px;
+    cursor: grab;
+    -webkit-app-region: no-drag;
+    filter: drop-shadow(0 10px 12px rgba(30, 40, 60, 0.30));
+  }
+  #mate.dragging { cursor: grabbing; }
+
+  .float { animation: float 6s ease-in-out infinite; transform-origin: 50% 90%; }
+  @keyframes float {
+    0%,100% { transform: translateX(-50%) translateY(0) rotate(0deg); }
+    50%     { transform: translateX(-50%) translateY(-7px) rotate(-0.5deg); }
+  }
+
+  .pupil { transition: transform .12s ease-out; transform: translate(var(--px,0px), var(--py,0px)); }
+  .lid   { transform-origin: center; transform: scaleY(0); transition: transform .09s ease-in; }
+  #mate.blink .lid { transform: scaleY(1); }
+
+  #bubble {
+    position: absolute;
+    max-width: 190px;
+    left: 50%; bottom: 168px; transform: translateX(-50%) translateY(6px) scale(.96);
+    padding: 11px 13px;
+    background: rgba(255,255,255,0.97);
+    color: #1c2430;
+    border-radius: 14px 14px 14px 4px;
+    box-shadow: 0 10px 24px rgba(20,30,45,0.22);
+    font-size: 13px; line-height: 1.5;
+    opacity: 0; transition: opacity .28s, transform .28s cubic-bezier(.2,.9,.3,1.2);
+    pointer-events: none; text-align: left;
+  }
+  #bubble.show { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+  #bubble .tag { display:block; font-size:10px; letter-spacing:.08em; text-transform:uppercase;
+                 color:#2f8375; font-weight:700; margin-bottom:3px; }
+  #bubble .clock { font-variant-numeric: tabular-nums; font-weight:700; }
+</style>
+</head>
+<body>
+  <div id="stage">
+    <div id="bubble"><span class="tag">마테</span><span id="bubble-text"></span></div>
+    <!-- CHARACTER -->
+    <svg id="mate" class="float" viewBox="0 0 200 214" xmlns="http://www.w3.org/2000/svg" aria-label="컴퓨터 메이트 비둘기 마테">
+      <defs>
+        <linearGradient id="bodyGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c6cedc"/><stop offset="1" stop-color="#94a1b6"/></linearGradient>
+        <linearGradient id="headGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ced6e3"/><stop offset="1" stop-color="#a2aec2"/></linearGradient>
+        <linearGradient id="bellyGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eaeff5"/><stop offset="1" stop-color="#cbd3df"/></linearGradient>
+        <linearGradient id="wingGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#aab5c6"/><stop offset="1" stop-color="#7f8da0"/></linearGradient>
+        <linearGradient id="irisGrad" x1="0" y1="0" x2="1" y2="0.6"><stop offset="0" stop-color="#57c6b1"/><stop offset="0.55" stop-color="#66a8d8"/><stop offset="1" stop-color="#9a86e0"/></linearGradient>
+        <linearGradient id="beakGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eeb27b"/><stop offset="1" stop-color="#d3833f"/></linearGradient>
+        <linearGradient id="tieGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a8476"/><stop offset="1" stop-color="#245c52"/></linearGradient>
+      </defs>
+      <path d="M100 172 q-6 28 -16 38 q12 -2 18 -12 q6 10 18 12 q-10 -10 -16 -38 z" fill="#8b96a9"/>
+      <path d="M100 176 q-2 22 -2 30 q2 -8 2 -30 z" fill="#9aa5b7"/>
+      <g stroke="#d3833f" stroke-width="3" stroke-linecap="round"><line x1="88" y1="180" x2="88" y2="196"/><line x1="112" y1="180" x2="112" y2="196"/></g>
+      <g stroke="#d3833f" stroke-width="2.2" stroke-linecap="round"><line x1="88" y1="196" x2="81" y2="201"/><line x1="88" y1="196" x2="95" y2="201"/><line x1="88" y1="196" x2="88" y2="202"/><line x1="112" y1="196" x2="105" y2="201"/><line x1="112" y1="196" x2="119" y2="201"/><line x1="112" y1="196" x2="112" y2="202"/></g>
+      <ellipse cx="100" cy="140" rx="58" ry="56" fill="url(#bodyGrad)"/>
+      <ellipse cx="100" cy="152" rx="38" ry="34" fill="url(#bellyGrad)" opacity="0.92"/>
+      <path d="M50 112 C39 132 44 162 71 174 C64 150 61 124 70 108 Z" fill="url(#wingGrad)"/>
+      <path d="M150 112 C161 132 156 162 129 174 C136 150 139 124 130 108 Z" fill="url(#wingGrad)"/>
+      <path d="M57 120 C50 140 54 158 70 170" stroke="#6f7d90" stroke-width="1.2" fill="none" opacity="0.45"/>
+      <path d="M143 120 C150 140 146 158 130 170" stroke="#6f7d90" stroke-width="1.2" fill="none" opacity="0.45"/>
+      <path d="M66 96 Q100 120 134 96 Q128 116 100 120 Q72 116 66 96 Z" fill="url(#irisGrad)" opacity="0.5"/>
+      <path d="M100 112 L93 118 L96 140 L100 146 L104 140 L107 118 Z" fill="url(#tieGrad)"/>
+      <path d="M93 110 L107 110 L104 118 L96 118 Z" fill="#245c52"/>
+      <circle cx="100" cy="62" r="38" fill="url(#headGrad)"/>
+      <ellipse cx="86" cy="47" rx="19" ry="13" fill="#ffffff" opacity="0.14"/>
+      <g>
+        <ellipse cx="84" cy="60" rx="6.4" ry="7" fill="#fbfdff"/>
+        <circle cx="84" cy="61" r="5.2" fill="#243543"/>
+        <circle class="pupil" cx="84" cy="61" r="2.9" fill="#0d1922"/>
+        <circle cx="86" cy="59" r="1.3" fill="#eafff9"/>
+        <path d="M77 56 Q84 52 91 56" stroke="#7e8ca0" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+        <rect class="lid lid-l" x="76" y="51" width="16" height="18" rx="8" fill="url(#headGrad)"/>
+      </g>
+      <g>
+        <ellipse cx="116" cy="60" rx="6.4" ry="7" fill="#fbfdff"/>
+        <circle cx="116" cy="61" r="5.2" fill="#243543"/>
+        <circle class="pupil" cx="116" cy="61" r="2.9" fill="#0d1922"/>
+        <circle cx="118" cy="59" r="1.3" fill="#eafff9"/>
+        <path d="M109 56 Q116 52 123 56" stroke="#7e8ca0" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+        <rect class="lid lid-r" x="108" y="51" width="16" height="18" rx="8" fill="url(#headGrad)"/>
+      </g>
+      <ellipse cx="100" cy="72" rx="7" ry="3.4" fill="#eef1f6"/>
+      <path d="M100 74 Q92 76 94.5 83 Q100 87 105.5 83 Q108 76 100 74 Z" fill="url(#beakGrad)"/>
+      <path d="M94.5 83 Q100 85.5 105.5 83 Q100 81.5 94.5 83 Z" fill="#b96f36"/>
+      <circle cx="97" cy="71.5" r="0.9" fill="#c9cfd8"/>
+      <circle cx="103" cy="71.5" r="0.9" fill="#c9cfd8"/>
+    </svg>
+  </div>
+
+<script>
+(function () {
+  "use strict";
+  var mate = document.getElementById("mate");
+  var bubble = document.getElementById("bubble");
+  var bubbleText = document.getElementById("bubble-text");
+
+  var lines = [
+    "천천히 가도 괜찮습니다. 한 번에 하나씩.",
+    "지금 가장 중요한 한 가지부터 시작하죠.",
+    "막힐 땐 소리 내어 설명해 보세요.",
+    "완벽한 첫 줄보다 고칠 수 있는 초안이 낫습니다.",
+    "잠깐 숨을 고르세요. 급할수록 한 걸음 물러서죠.",
+    "방금 그 작업, 잘 하셨습니다.",
+    "어깨에 힘이 들어가 있진 않나요? 잠시 풀어 주세요."
+  ];
+
+  /* eye tracking */
+  var pupils = mate.querySelectorAll(".pupil");
+  window.addEventListener("mousemove", function (e) {
+    if (dragging) return;
+    var r = mate.getBoundingClientRect();
+    var cx = r.left + r.width * 0.5, cy = r.top + r.height * 0.34;
+    var dx = e.clientX - cx, dy = e.clientY - cy, d = Math.hypot(dx, dy) || 1;
+    var px = (dx / d) * Math.min(2.6, d / 45), py = (dy / d) * Math.min(2.6, d / 45);
+    pupils.forEach(function (p) {
+      p.style.setProperty("--px", px.toFixed(2) + "px");
+      p.style.setProperty("--py", py.toFixed(2) + "px");
+    });
+  });
+
+  /* blink */
+  (function blink() {
+    setTimeout(function () {
+      mate.classList.add("blink");
+      setTimeout(function () {
+        mate.classList.remove("blink");
+        if (Math.random() < 0.25) setTimeout(function () {
+          mate.classList.add("blink");
+          setTimeout(function () { mate.classList.remove("blink"); }, 110);
+        }, 170);
+      }, 120);
+      blink();
+    }, 2600 + Math.random() * 4200);
+  })();
+
+  /* speech */
+  var t = null;
+  function say(html, ms) {
+    bubbleText.innerHTML = html;
+    bubble.classList.add("show");
+    if (t) clearTimeout(t);
+    if (ms !== 0) t = setTimeout(function () { bubble.classList.remove("show"); }, ms || 5000);
+  }
+  function talk() { say(lines[Math.floor(Math.random() * lines.length)]); }
+
+  /* status */
+  function status() {
+    var n = new Date(), h = n.getHours();
+    var hh = String(h).padStart(2,"0"), mm = String(n.getMinutes()).padStart(2,"0");
+    var g = h < 6 ? "깊은 밤이네요. 무리하지 마세요."
+      : h < 12 ? "좋은 아침입니다. 차분히 시작해 볼까요."
+      : h < 18 ? "오후입니다. 물 한 잔 어떠세요."
+      : "저녁이네요. 오늘도 수고 많으셨습니다.";
+    say('<span class="clock">' + hh + ":" + mm + '</span> · ' + g, 6000);
+  }
+
+  /* focus timer (toggled from tray) */
+  var TOTAL = 25*60, remain = TOTAL, tick = null, onBreak = false;
+  function fmt(s){return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");}
+  function focusToggle() {
+    if (tick) { clearInterval(tick); tick = null; say("집중 세션을 잠시 멈췄습니다.", 3500); return; }
+    say('집중 세션 시작 · <span class="clock">'+fmt(remain)+'</span>', 0);
+    tick = setInterval(function () {
+      remain--;
+      if (remain <= 0) {
+        onBreak = !onBreak; remain = onBreak ? 5*60 : TOTAL;
+        say(onBreak ? "한 세션 완료. 5분간 눈과 어깨를 쉬어 주세요."
+                    : "휴식 끝. 다시 한 가지에 집중해 볼까요.", 6000);
+        clearInterval(tick); tick = null; return;
+      }
+      say((onBreak?'휴식 · ':'집중 · ')+'<span class="clock">'+fmt(remain)+'</span>', 0);
+    }, 1000);
+  }
+
+  /* click = talk */
+  var dragging = false, moved = false, lastX = 0, lastY = 0;
+  mate.addEventListener("pointerdown", function (e) {
+    dragging = true; moved = false; lastX = e.screenX; lastY = e.screenY;
+    mate.classList.add("dragging"); mate.setPointerCapture(e.pointerId);
+  });
+  mate.addEventListener("pointermove", function (e) {
+    if (!dragging) return;
+    var dx = e.screenX - lastX, dy = e.screenY - lastY;
+    if (dx || dy) moved = true;
+    lastX = e.screenX; lastY = e.screenY;
+    if (window.mate) window.mate.drag(dx, dy);   // move the OS window
+  });
+  mate.addEventListener("pointerup", function (e) {
+    dragging = false; mate.classList.remove("dragging");
+    try { mate.releasePointerCapture(e.pointerId); } catch (_) {}
+    if (!moved) talk();
+  });
+  window.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+
+  /* tray-driven actions */
+  if (window.mate) {
+    window.mate.onTalk(talk);
+    window.mate.onStatus(status);
+    window.mate.onFocus(focusToggle);
+  }
+
+  setTimeout(function () { say("안녕하세요. 저는 마테예요. 옆에서 함께하겠습니다.", 6000); }, 900);
+})();
+</script>
+</body>
+</html>

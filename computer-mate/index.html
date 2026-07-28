@@ -189,101 +189,58 @@
     <button data-mode="status">상태</button>
   </div>
 
-  <!-- The mate character: a calm pigeon (SVG) -->
-  <svg id="mate" class="float" viewBox="0 0 160 178" xmlns="http://www.w3.org/2000/svg" aria-label="컴퓨터 메이트 비둘기 마테">
+  <!-- The mate character: a refined calm pigeon (SVG) -->
+  <svg id="mate" class="float" viewBox="0 0 200 214" xmlns="http://www.w3.org/2000/svg" aria-label="컴퓨터 메이트 비둘기 마테">
     <defs>
-      <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#9aa7b8"/>
-        <stop offset="1" stop-color="#6f7d90"/>
-      </linearGradient>
-      <linearGradient id="head" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#a3b0c0"/>
-        <stop offset="1" stop-color="#7c8a9c"/>
-      </linearGradient>
-      <linearGradient id="belly" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#c9d2dd"/>
-        <stop offset="1" stop-color="#aab6c4"/>
-      </linearGradient>
-      <linearGradient id="iris" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stop-color="#4db6a4"/>
-        <stop offset="0.55" stop-color="#5aa3c9"/>
-        <stop offset="1" stop-color="#8f6fd0"/>
-      </linearGradient>
-      <linearGradient id="beak" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#f0a878"/>
-        <stop offset="1" stop-color="#e08a52"/>
-      </linearGradient>
-      <radialGradient id="glow" cx="0.5" cy="0.42" r="0.7">
-        <stop offset="0" stop-color="#4db6a4" stop-opacity="0.9"/>
-        <stop offset="1" stop-color="#4db6a4" stop-opacity="0"/>
-      </radialGradient>
+      <linearGradient id="bodyGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c6cedc"/><stop offset="1" stop-color="#94a1b6"/></linearGradient>
+      <linearGradient id="headGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ced6e3"/><stop offset="1" stop-color="#a2aec2"/></linearGradient>
+      <linearGradient id="bellyGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eaeff5"/><stop offset="1" stop-color="#cbd3df"/></linearGradient>
+      <linearGradient id="wingGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#aab5c6"/><stop offset="1" stop-color="#7f8da0"/></linearGradient>
+      <linearGradient id="irisGrad" x1="0" y1="0" x2="1" y2="0.6"><stop offset="0" stop-color="#57c6b1"/><stop offset="0.55" stop-color="#66a8d8"/><stop offset="1" stop-color="#9a86e0"/></linearGradient>
+      <linearGradient id="beakGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eeb27b"/><stop offset="1" stop-color="#d3833f"/></linearGradient>
+      <linearGradient id="tieGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a8476"/><stop offset="1" stop-color="#245c52"/></linearGradient>
+      <radialGradient id="glow" cx="0.5" cy="0.4" r="0.7"><stop offset="0" stop-color="#4db6a4" stop-opacity="0.55"/><stop offset="1" stop-color="#4db6a4" stop-opacity="0"/></radialGradient>
     </defs>
 
-    <!-- soft glow behind -->
-    <ellipse cx="80" cy="92" rx="72" ry="76" fill="url(#glow)" opacity="0.30"/>
+    <ellipse cx="100" cy="120" rx="86" ry="92" fill="url(#glow)" opacity="0.25"/>
+    <ellipse cx="100" cy="204" rx="46" ry="7" fill="#243140" opacity="0.15"/>
 
-    <!-- ground shadow -->
-    <ellipse cx="80" cy="170" rx="40" ry="7" fill="#243140" opacity="0.18"/>
-
-    <!-- tail feathers (behind body) -->
-    <path d="M44 118 q-16 22 -22 40 q18 -6 30 -14 z" fill="#5c6a7d"/>
-    <path d="M50 122 l-10 30 l14 -8 z" fill="#6d7c90"/>
-
-    <!-- legs / feet -->
-    <g stroke="#e08a52" stroke-width="3.4" stroke-linecap="round">
-      <line x1="70" y1="150" x2="70" y2="164"/>
-      <line x1="90" y1="150" x2="90" y2="164"/>
-    </g>
-    <g stroke="#e08a52" stroke-width="2.6" stroke-linecap="round">
-      <line x1="70" y1="164" x2="63" y2="168"/><line x1="70" y1="164" x2="77" y2="168"/>
-      <line x1="90" y1="164" x2="83" y2="168"/><line x1="90" y1="164" x2="97" y2="168"/>
-    </g>
-
-    <!-- body -->
-    <ellipse cx="80" cy="112" rx="52" ry="46" fill="url(#body)"/>
-    <!-- belly highlight -->
-    <ellipse cx="80" cy="124" rx="34" ry="30" fill="url(#belly)" opacity="0.9"/>
-
-    <!-- folded wings -->
-    <path d="M32 104 q-6 30 16 44 q6 -30 -2 -50 z" fill="#5f6d80"/>
-    <path d="M128 104 q6 30 -16 44 q-6 -30 2 -50 z" fill="#5f6d80"/>
-    <path d="M34 108 q-2 22 12 34" stroke="#4e5b6d" stroke-width="1.4" fill="none" opacity="0.6"/>
-    <path d="M126 108 q2 22 -12 34" stroke="#4e5b6d" stroke-width="1.4" fill="none" opacity="0.6"/>
-
-    <!-- iridescent neck band (the pigeon signature) -->
-    <path d="M52 82 q28 22 56 0 q-4 16 -28 18 q-24 -2 -28 -18 z" fill="url(#iris)" opacity="0.9"/>
-
-    <!-- tiny bowtie: the "professional" cue -->
-    <path d="M80 96 l-11 -7 v14 z" fill="#2f8375"/>
-    <path d="M80 96 l11 -7 v14 z" fill="#2f8375"/>
-    <circle cx="80" cy="96" r="3.4" fill="#256b60"/>
-
-    <!-- head -->
-    <circle cx="80" cy="52" r="36" fill="url(#head)"/>
-
-    <!-- eyes -->
+    <path d="M100 172 q-6 28 -16 38 q12 -2 18 -12 q6 10 18 12 q-10 -10 -16 -38 z" fill="#8b96a9"/>
+    <path d="M100 176 q-2 22 -2 30 q2 -8 2 -30 z" fill="#9aa5b7"/>
+    <g stroke="#d3833f" stroke-width="3" stroke-linecap="round"><line x1="88" y1="180" x2="88" y2="196"/><line x1="112" y1="180" x2="112" y2="196"/></g>
+    <g stroke="#d3833f" stroke-width="2.2" stroke-linecap="round"><line x1="88" y1="196" x2="81" y2="201"/><line x1="88" y1="196" x2="95" y2="201"/><line x1="88" y1="196" x2="88" y2="202"/><line x1="112" y1="196" x2="105" y2="201"/><line x1="112" y1="196" x2="119" y2="201"/><line x1="112" y1="196" x2="112" y2="202"/></g>
+    <ellipse cx="100" cy="140" rx="58" ry="56" fill="url(#bodyGrad)"/>
+    <ellipse cx="100" cy="152" rx="38" ry="34" fill="url(#bellyGrad)" opacity="0.92"/>
+    <path d="M50 112 C39 132 44 162 71 174 C64 150 61 124 70 108 Z" fill="url(#wingGrad)"/>
+    <path d="M150 112 C161 132 156 162 129 174 C136 150 139 124 130 108 Z" fill="url(#wingGrad)"/>
+    <path d="M57 120 C50 140 54 158 70 170" stroke="#6f7d90" stroke-width="1.2" fill="none" opacity="0.45"/>
+    <path d="M143 120 C150 140 146 158 130 170" stroke="#6f7d90" stroke-width="1.2" fill="none" opacity="0.45"/>
+    <path d="M66 96 Q100 120 134 96 Q128 116 100 120 Q72 116 66 96 Z" fill="url(#irisGrad)" opacity="0.5"/>
+    <path d="M100 112 L93 118 L96 140 L100 146 L104 140 L107 118 Z" fill="url(#tieGrad)"/>
+    <path d="M93 110 L107 110 L104 118 L96 118 Z" fill="#245c52"/>
+    <circle cx="100" cy="62" r="38" fill="url(#headGrad)"/>
+    <ellipse cx="86" cy="47" rx="19" ry="13" fill="#ffffff" opacity="0.14"/>
     <g>
-      <circle cx="66" cy="48" r="9.5" fill="#fbfdff"/>
-      <circle cx="66" cy="48" r="8" fill="#12202b"/>
-      <circle class="pupil" cx="66" cy="48" r="5" fill="#f4a63c"/>
-      <circle cx="66" cy="48" r="2.4" fill="#0c151d"/>
-      <circle cx="68" cy="46" r="1.5" fill="#eafff9"/>
-      <rect class="lid lid-l" x="55" y="37" width="22" height="22" rx="10" fill="url(#head)"/>
+      <ellipse cx="84" cy="60" rx="6.4" ry="7" fill="#fbfdff"/>
+      <circle cx="84" cy="61" r="5.2" fill="#243543"/>
+      <circle class="pupil" cx="84" cy="61" r="2.9" fill="#0d1922"/>
+      <circle cx="86" cy="59" r="1.3" fill="#eafff9"/>
+      <path d="M77 56 Q84 52 91 56" stroke="#7e8ca0" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+      <rect class="lid lid-l" x="76" y="51" width="16" height="18" rx="8" fill="url(#headGrad)"/>
     </g>
     <g>
-      <circle cx="94" cy="48" r="9.5" fill="#fbfdff"/>
-      <circle cx="94" cy="48" r="8" fill="#12202b"/>
-      <circle class="pupil" cx="94" cy="48" r="5" fill="#f4a63c"/>
-      <circle cx="94" cy="48" r="2.4" fill="#0c151d"/>
-      <circle cx="96" cy="46" r="1.5" fill="#eafff9"/>
-      <rect class="lid lid-r" x="83" y="37" width="22" height="22" rx="10" fill="url(#head)"/>
+      <ellipse cx="116" cy="60" rx="6.4" ry="7" fill="#fbfdff"/>
+      <circle cx="116" cy="61" r="5.2" fill="#243543"/>
+      <circle class="pupil" cx="116" cy="61" r="2.9" fill="#0d1922"/>
+      <circle cx="118" cy="59" r="1.3" fill="#eafff9"/>
+      <path d="M109 56 Q116 52 123 56" stroke="#7e8ca0" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+      <rect class="lid lid-r" x="108" y="51" width="16" height="18" rx="8" fill="url(#headGrad)"/>
     </g>
-
-    <!-- beak -->
-    <path d="M80 58 q-8 3 -6 10 q6 3 12 0 q2 -7 -6 -10 z" fill="url(#beak)"/>
-    <ellipse cx="80" cy="59" rx="5" ry="2.4" fill="#c9743f"/>
-    <circle cx="77.5" cy="59" r="0.9" fill="#8a4a24"/>
-    <circle cx="82.5" cy="59" r="0.9" fill="#8a4a24"/>
+    <ellipse cx="100" cy="72" rx="7" ry="3.4" fill="#eef1f6"/>
+    <path d="M100 74 Q92 76 94.5 83 Q100 87 105.5 83 Q108 76 100 74 Z" fill="url(#beakGrad)"/>
+    <path d="M94.5 83 Q100 85.5 105.5 83 Q100 81.5 94.5 83 Z" fill="#b96f36"/>
+    <circle cx="97" cy="71.5" r="0.9" fill="#c9cfd8"/>
+    <circle cx="103" cy="71.5" r="0.9" fill="#c9cfd8"/>
   </svg>
 
   <div id="bubble"><span class="tag">마테</span><span id="bubble-text"></span></div>
