@@ -43,22 +43,45 @@
   }
   #reset:hover { background: #fff; }
 
+  #exprbar {
+    position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 6px; padding: 6px;
+    background: rgba(255,255,255,0.7); backdrop-filter: blur(8px);
+    border-radius: 999px; box-shadow: 0 8px 22px rgba(30,40,60,0.12);
+  }
+  #exprbar button {
+    border: none; background: transparent; color: #4a5568;
+    font-size: 12px; font-weight: 600; padding: 6px 13px;
+    border-radius: 999px; cursor: pointer; transition: background .15s, color .15s;
+  }
+  #exprbar button:hover { background: rgba(77,182,164,0.16); color: #2f8375; }
+  #exprbar button.active { background: #4db6a4; color: #fff; }
+
   @media (prefers-color-scheme: dark) {
     body { background: radial-gradient(1200px 800px at 50% 30%, #232a35 0%, #171d26 75%); color: #d6dbe4; }
     #hint { background: rgba(30,38,50,0.7); color: #c4ccd8; }
     #title { color: #97a1b0; } #title b { color: #e6ebf2; }
     #reset { background: rgba(40,50,64,0.7); color: #c4ccd8; border-color: rgba(255,255,255,0.1); }
+    #exprbar { background: rgba(40,50,64,0.7); }
+    #exprbar button { color: #c4ccd8; }
   }
 </style>
 </head>
 <body>
   <div id="app"></div>
   <div id="title"><b>마테</b> · 3D</div>
+  <div id="exprbar">
+    <button data-exp="default" class="active">기본</button>
+    <button data-exp="happy">방긋</button>
+    <button data-exp="sparkle">초롱</button>
+  </div>
   <button id="reset">시점 초기화</button>
   <div id="hint">
     <span><b>가운데(휠) 버튼</b> 누른 채 드래그 → 회전</span>
     <span class="sep"></span>
     <span><b>휠 스크롤</b> → 확대·축소</span>
+    <span class="sep"></span>
+    <span><b>클릭</b> → 표정 전환</span>
   </div>
 
   <script src="./three.min.js"></script>
@@ -159,17 +182,34 @@
       knot.position.set(0, 0.24, 1.04); pigeon.add(knot);
     })();
 
-    // eyes
-    function eye(sx) {
+    // eyes — each side holds an "open" group and a "closed/happy" arc, toggled by expression
+    function makeEye(sx) {
       var g = new THREE.Group();
-      var e = new THREE.Mesh(new THREE.SphereGeometry(0.17, 32, 24), eyeMat);
-      g.add(e);
-      var h = new THREE.Mesh(new THREE.SphereGeometry(0.045, 16, 12), whiteMat);
-      h.position.set(-0.05 * sx, 0.06, 0.13); g.add(h);
-      g.position.set(0.33 * sx, 1.02, 0.72);
+
+      var open = new THREE.Group();
+      var ball = new THREE.Mesh(new THREE.SphereGeometry(0.18, 32, 24), eyeMat);
+      open.add(ball);
+      var hl = new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 12), whiteMat);
+      hl.position.set(-0.055 * sx, 0.07, 0.14); open.add(hl);
+      var sparkle = new THREE.Mesh(new THREE.SphereGeometry(0.03, 12, 10), whiteMat);
+      sparkle.position.set(0.06 * sx, -0.05, 0.15); sparkle.visible = false; open.add(sparkle);
+      g.add(open);
+
+      // happy closed eye: an upward smile arc (‿)
+      var curve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(-0.16, 0.045, 0),
+        new THREE.Vector3(0, -0.055, 0.02),
+        new THREE.Vector3(0.16, 0.045, 0)
+      ]);
+      var closed = new THREE.Mesh(new THREE.TubeGeometry(curve, 20, 0.028, 8), eyeMat);
+      closed.position.z = 0.12; closed.visible = false;
+      g.add(closed);
+
+      g.position.set(0.34 * sx, 1.0, 0.72);
       pigeon.add(g);
+      return { open: open, closed: closed, ball: ball, sparkle: sparkle };
     }
-    eye(-1); eye(1);
+    var eyesRefs = [makeEye(-1), makeEye(1)];
 
     // beak + white cere
     var cere = ellipsoid(pigeon, 1, 0.16, 0.07, 0.1, 0, 0.86, 0.86, cereMat);
@@ -239,10 +279,11 @@
     var dragging = false, lastX = 0, lastY = 0, interacted = false;
     var minZ = 4.5, maxZ = 11;
 
+    var downBtn = -1, downX = 0, downY = 0, movedFar = false;
     function down(e) {
       // middle (1) is the requested control; left (0) works too as a fallback
       if (e.button === 1 || e.button === 0) {
-        dragging = true; interacted = true;
+        dragging = true; downBtn = e.button; downX = e.clientX; downY = e.clientY; movedFar = false;
         lastX = e.clientX; lastY = e.clientY;
         e.preventDefault();
       }
@@ -251,11 +292,16 @@
       if (!dragging) return;
       var dx = e.clientX - lastX, dy = e.clientY - lastY;
       lastX = e.clientX; lastY = e.clientY;
+      if (Math.abs(e.clientX - downX) + Math.abs(e.clientY - downY) > 5) { movedFar = true; interacted = true; }
       targetYaw += dx * 0.008;
       targetPitch += dy * 0.008;
       targetPitch = Math.max(-1.1, Math.min(1.1, targetPitch));
     }
-    function up() { dragging = false; }
+    function up() {
+      // a left-click without dragging cycles the expression
+      if (dragging && downBtn === 0 && !movedFar) cycleExpression();
+      dragging = false; downBtn = -1;
+    }
 
     var el = renderer.domElement;
     el.addEventListener("mousedown", down);
@@ -297,6 +343,42 @@
     document.getElementById("reset").addEventListener("click", function () {
       targetYaw = 0.5; targetPitch = 0.12; camera.position.z = 7.2; interacted = true;
     });
+
+    // ---------- expressions (matching the master sheet) ----------
+    var exprList = ["default", "happy", "sparkle"];
+    var currentExpr = "default";
+    function setExpression(name) {
+      currentExpr = name;
+      var happy = name === "happy";
+      eyesRefs.forEach(function (r) {
+        r.open.visible = !happy;
+        r.closed.visible = happy;
+        r.sparkle.visible = (name === "sparkle");
+        r.ball.scale.set(1, 1, 1);
+      });
+      document.querySelectorAll("#exprbar button").forEach(function (b) {
+        b.classList.toggle("active", b.dataset.exp === name);
+      });
+    }
+    function cycleExpression() {
+      setExpression(exprList[(exprList.indexOf(currentExpr) + 1) % exprList.length]);
+    }
+    document.querySelectorAll("#exprbar button").forEach(function (b) {
+      b.addEventListener("click", function () { setExpression(b.dataset.exp); });
+    });
+
+    // ---------- blinking (skipped while the happy eyes are closed) ----------
+    (function blink() {
+      setTimeout(function () {
+        if (currentExpr !== "happy") {
+          eyesRefs.forEach(function (r) { r.ball.scale.y = 0.12; });
+          setTimeout(function () {
+            eyesRefs.forEach(function (r) { if (currentExpr !== "happy") r.ball.scale.y = 1; });
+          }, 110);
+        }
+        blink();
+      }, 2600 + Math.random() * 4000);
+    })();
 
     var hint = document.getElementById("hint");
     setTimeout(function () { if (interacted) hint.style.opacity = "0.35"; }, 6000);
