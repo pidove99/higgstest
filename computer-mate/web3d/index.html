@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Computer Mate · 3D 마테</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Pretendard",
+      "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    background: radial-gradient(1200px 800px at 50% 30%, #f4f1ea 0%, #e7e3d8 70%, #ddd8cb 100%);
+    color: #3a4150;
+    user-select: none;
+  }
+  #app { position: fixed; inset: 0; }
+  canvas { display: block; touch-action: none; }
+
+  #hint {
+    position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
+    display: flex; gap: 14px; align-items: center;
+    padding: 10px 16px; border-radius: 999px;
+    background: rgba(255,255,255,0.72); backdrop-filter: blur(8px);
+    box-shadow: 0 8px 22px rgba(30,40,60,0.12);
+    font-size: 12.5px; color: #4a5568; white-space: nowrap;
+    transition: opacity .5s;
+  }
+  #hint b { color: #2f8375; }
+  #hint .sep { width: 1px; height: 14px; background: rgba(0,0,0,0.12); }
+
+  #title {
+    position: fixed; top: 20px; left: 22px;
+    font-size: 13px; letter-spacing: .04em; color: #6b7280;
+  }
+  #title b { color: #3a4150; font-size: 15px; }
+
+  #reset {
+    position: fixed; top: 18px; right: 18px;
+    border: 1px solid rgba(0,0,0,0.1); background: rgba(255,255,255,0.7);
+    color: #4a5568; font-size: 12px; font-weight: 600;
+    padding: 7px 13px; border-radius: 999px; cursor: pointer;
+  }
+  #reset:hover { background: #fff; }
+
+  @media (prefers-color-scheme: dark) {
+    body { background: radial-gradient(1200px 800px at 50% 30%, #232a35 0%, #171d26 75%); color: #d6dbe4; }
+    #hint { background: rgba(30,38,50,0.7); color: #c4ccd8; }
+    #title { color: #97a1b0; } #title b { color: #e6ebf2; }
+    #reset { background: rgba(40,50,64,0.7); color: #c4ccd8; border-color: rgba(255,255,255,0.1); }
+  }
+</style>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="title"><b>마테</b> · 3D</div>
+  <button id="reset">시점 초기화</button>
+  <div id="hint">
+    <span><b>가운데(휠) 버튼</b> 누른 채 드래그 → 회전</span>
+    <span class="sep"></span>
+    <span><b>휠 스크롤</b> → 확대·축소</span>
+  </div>
+
+  <script src="./three.min.js"></script>
+  <script>
+  (function () {
+    "use strict";
+    var app = document.getElementById("app");
+
+    var scene = new THREE.Scene();
+    var camera = new THREE.PerspectiveCamera(35, app.clientWidth / app.clientHeight, 0.1, 100);
+    camera.position.set(0, 0.4, 7.2);
+
+    var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(app.clientWidth, app.clientHeight);
+    app.appendChild(renderer.domElement);
+
+    // ---------- lighting (soft studio) ----------
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x9aa0a8, 0.95));
+    var key = new THREE.DirectionalLight(0xffffff, 0.85);
+    key.position.set(-3, 5, 5);
+    scene.add(key);
+    var rim = new THREE.DirectionalLight(0xbcd3ff, 0.4);
+    rim.position.set(4, 2, -4);
+    scene.add(rim);
+
+    // ---------- material helpers ----------
+    function mat(color, rough, metal) {
+      return new THREE.MeshStandardMaterial({
+        color: new THREE.Color(color),
+        roughness: rough == null ? 0.82 : rough,
+        metalness: metal == null ? 0.05 : metal
+      });
+    }
+    function ellipsoid(parent, r, sx, sy, sz, x, y, z, material) {
+      var m = new THREE.Mesh(new THREE.SphereGeometry(r, 48, 36), material);
+      m.scale.set(sx, sy, sz);
+      m.position.set(x, y, z);
+      parent.add(m);
+      return m;
+    }
+
+    // iridescent chest texture: green (top) -> purple (bottom)
+    function irisTexture() {
+      var c = document.createElement("canvas");
+      c.width = 64; c.height = 128;
+      var g = c.getContext("2d");
+      var grad = g.createLinearGradient(0, 0, 0, 128);
+      grad.addColorStop(0.0, "#8fb79a");
+      grad.addColorStop(0.45, "#6fae8f");
+      grad.addColorStop(0.62, "#7a94b0");
+      grad.addColorStop(1.0, "#8a79b8");
+      g.fillStyle = grad; g.fillRect(0, 0, 64, 128);
+      var t = new THREE.CanvasTexture(c);
+      t.needsUpdate = true;
+      return t;
+    }
+
+    // ---------- build the pigeon ----------
+    var pigeon = new THREE.Group();
+    scene.add(pigeon);
+
+    var greyBody  = mat("#95a1b1");
+    var greyHead  = mat("#a3afbe");
+    var greyWing  = mat("#7f8c9d");
+    var greyDark  = mat("#5f6b7c");
+    var bellyMat  = mat("#d2d8e0");
+    var beakMat   = mat("#e6a26c", 0.55, 0.05);
+    var footMat   = mat("#d98a52", 0.6, 0.05);
+    var eyeMat    = new THREE.MeshStandardMaterial({ color: 0x0c1117, roughness: 0.25, metalness: 0.1 });
+    var whiteMat  = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
+    var cereMat   = mat("#eef1f6", 0.6, 0.0);
+    var irisMat   = new THREE.MeshStandardMaterial({ map: irisTexture(), roughness: 0.35, metalness: 0.35 });
+    var tieMat    = mat("#2f8375", 0.6, 0.1);
+
+    // body (chunky, bottom-heavy blob)
+    ellipsoid(pigeon, 1, 1.12, 1.18, 1.15, 0, -0.15, 0, greyBody);
+    // lighter belly
+    ellipsoid(pigeon, 1, 0.82, 0.78, 0.55, 0, -0.55, 0.66, bellyMat);
+    // head merged on top
+    ellipsoid(pigeon, 1, 0.86, 0.84, 0.86, 0, 0.92, 0.12, greyHead);
+
+    // iridescent chest bib
+    var bib = ellipsoid(pigeon, 1, 0.72, 0.5, 0.45, 0, 0.18, 0.72, irisMat);
+    bib.renderOrder = 1;
+
+    // slim necktie (professional cue)
+    (function () {
+      var shape = new THREE.Shape();
+      shape.moveTo(-0.09, 0.0); shape.lineTo(0.09, 0.0);
+      shape.lineTo(0.06, -0.55); shape.lineTo(0.0, -0.68);
+      shape.lineTo(-0.06, -0.55); shape.lineTo(-0.09, 0.0);
+      var geo = new THREE.ExtrudeGeometry(shape, { depth: 0.05, bevelEnabled: false });
+      var tie = new THREE.Mesh(geo, tieMat);
+      tie.position.set(0, 0.18, 1.02); tie.renderOrder = 2;
+      pigeon.add(tie);
+      var knot = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.12, 0.08), tieMat);
+      knot.position.set(0, 0.24, 1.04); pigeon.add(knot);
+    })();
+
+    // eyes
+    function eye(sx) {
+      var g = new THREE.Group();
+      var e = new THREE.Mesh(new THREE.SphereGeometry(0.17, 32, 24), eyeMat);
+      g.add(e);
+      var h = new THREE.Mesh(new THREE.SphereGeometry(0.045, 16, 12), whiteMat);
+      h.position.set(-0.05 * sx, 0.06, 0.13); g.add(h);
+      g.position.set(0.33 * sx, 1.02, 0.72);
+      pigeon.add(g);
+    }
+    eye(-1); eye(1);
+
+    // beak + white cere
+    var cere = ellipsoid(pigeon, 1, 0.16, 0.07, 0.1, 0, 0.86, 0.86, cereMat);
+    (function () {
+      var beak = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.28, 20), beakMat);
+      beak.rotation.x = Math.PI / 2;
+      beak.position.set(0, 0.8, 1.0);
+      pigeon.add(beak);
+    })();
+
+    // wings (folded on the sides) with darker feather tips
+    function wing(sx) {
+      var w = ellipsoid(pigeon, 1, 0.34, 0.82, 0.98, 0.92 * sx, -0.05, -0.05, greyWing);
+      w.rotation.z = -0.12 * sx;
+      // two dark feather bands near the back
+      var b1 = ellipsoid(pigeon, 1, 0.30, 0.09, 0.5, 0.92 * sx, -0.55, -0.35, greyDark);
+      b1.rotation.z = -0.12 * sx;
+      var b2 = ellipsoid(pigeon, 1, 0.28, 0.08, 0.42, 0.9 * sx, -0.78, -0.42, greyDark);
+      b2.rotation.z = -0.12 * sx;
+    }
+    wing(-1); wing(1);
+
+    // tail (flat, pointing back, with dark bands)
+    (function () {
+      var t = ellipsoid(pigeon, 1, 0.55, 0.16, 0.7, 0, -0.55, -1.05, greyWing);
+      t.rotation.x = 0.35;
+      var d = ellipsoid(pigeon, 1, 0.5, 0.1, 0.2, 0, -0.72, -1.5, greyDark);
+      d.rotation.x = 0.35;
+    })();
+
+    // feet
+    function foot(sx) {
+      var f = new THREE.Group();
+      for (var i = -1; i <= 1; i++) {
+        var toe = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.34, 10), footMat);
+        toe.rotation.x = Math.PI / 2.2;
+        toe.rotation.z = i * 0.4;
+        toe.position.set(i * 0.11, 0, 0.12);
+        f.add(toe);
+      }
+      var leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.22, 10), footMat);
+      leg.position.y = 0.1; f.add(leg);
+      f.position.set(0.32 * sx, -1.32, 0.45);
+      pigeon.add(f);
+    }
+    foot(-1); foot(1);
+
+    // soft contact shadow
+    (function () {
+      var c = document.createElement("canvas"); c.width = c.height = 128;
+      var g = c.getContext("2d");
+      var rg = g.createRadialGradient(64, 64, 4, 64, 64, 60);
+      rg.addColorStop(0, "rgba(40,50,65,0.35)"); rg.addColorStop(1, "rgba(40,50,65,0)");
+      g.fillStyle = rg; g.fillRect(0, 0, 128, 128);
+      var tex = new THREE.CanvasTexture(c);
+      var sh = new THREE.Mesh(
+        new THREE.PlaneGeometry(3.4, 3.4),
+        new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false })
+      );
+      sh.rotation.x = -Math.PI / 2; sh.position.y = -1.55;
+      scene.add(sh);
+    })();
+
+    // ---------- middle-button orbit controls ----------
+    var targetYaw = 0.5, targetPitch = 0.12;   // initial three-quarter view
+    var curYaw = targetYaw, curPitch = targetPitch;
+    var dragging = false, lastX = 0, lastY = 0, interacted = false;
+    var minZ = 4.5, maxZ = 11;
+
+    function down(e) {
+      // middle (1) is the requested control; left (0) works too as a fallback
+      if (e.button === 1 || e.button === 0) {
+        dragging = true; interacted = true;
+        lastX = e.clientX; lastY = e.clientY;
+        e.preventDefault();
+      }
+    }
+    function move(e) {
+      if (!dragging) return;
+      var dx = e.clientX - lastX, dy = e.clientY - lastY;
+      lastX = e.clientX; lastY = e.clientY;
+      targetYaw += dx * 0.008;
+      targetPitch += dy * 0.008;
+      targetPitch = Math.max(-1.1, Math.min(1.1, targetPitch));
+    }
+    function up() { dragging = false; }
+
+    var el = renderer.domElement;
+    el.addEventListener("mousedown", down);
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
+    // suppress the browser's middle-click autoscroll
+    el.addEventListener("auxclick", function (e) { if (e.button === 1) e.preventDefault(); });
+    el.addEventListener("pointerdown", function (e) { if (e.button === 1) e.preventDefault(); });
+    el.addEventListener("wheel", function (e) {
+      e.preventDefault(); interacted = true;
+      camera.position.z = Math.max(minZ, Math.min(maxZ, camera.position.z + e.deltaY * 0.003));
+    }, { passive: false });
+    el.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+
+    // touch: one finger drag to rotate, pinch to zoom
+    var pinchStart = 0, pinchZ = 0;
+    el.addEventListener("touchstart", function (e) {
+      interacted = true;
+      if (e.touches.length === 1) { dragging = true; lastX = e.touches[0].clientX; lastY = e.touches[0].clientY; }
+      else if (e.touches.length === 2) { pinchStart = touchDist(e); pinchZ = camera.position.z; }
+    }, { passive: false });
+    el.addEventListener("touchmove", function (e) {
+      e.preventDefault();
+      if (e.touches.length === 1 && dragging) {
+        var dx = e.touches[0].clientX - lastX, dy = e.touches[0].clientY - lastY;
+        lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
+        targetYaw += dx * 0.008; targetPitch = Math.max(-1.1, Math.min(1.1, targetPitch + dy * 0.008));
+      } else if (e.touches.length === 2) {
+        var d = touchDist(e);
+        camera.position.z = Math.max(minZ, Math.min(maxZ, pinchZ * (pinchStart / d)));
+      }
+    }, { passive: false });
+    el.addEventListener("touchend", function () { dragging = false; });
+    function touchDist(e) {
+      var a = e.touches[0], b = e.touches[1];
+      return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+    }
+
+    document.getElementById("reset").addEventListener("click", function () {
+      targetYaw = 0.5; targetPitch = 0.12; camera.position.z = 7.2; interacted = true;
+    });
+
+    var hint = document.getElementById("hint");
+    setTimeout(function () { if (interacted) hint.style.opacity = "0.35"; }, 6000);
+
+    // ---------- loop ----------
+    var clock = new THREE.Clock();
+    function animate() {
+      requestAnimationFrame(animate);
+      var t = clock.getElapsedTime();
+      if (!interacted) targetYaw += 0.004;            // gentle auto-rotate before first touch
+      curYaw += (targetYaw - curYaw) * 0.12;
+      curPitch += (targetPitch - curPitch) * 0.12;
+      pigeon.rotation.y = curYaw;
+      pigeon.rotation.x = curPitch;
+      pigeon.position.y = Math.sin(t * 1.4) * 0.04;   // idle bob
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener("resize", function () {
+      camera.aspect = app.clientWidth / app.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(app.clientWidth, app.clientHeight);
+    });
+  })();
+  </script>
+</body>
+</html>
