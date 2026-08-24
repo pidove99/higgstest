@@ -12,6 +12,12 @@
       "sourceType": "github",
       "skillPath": "SKILL.md",
       "computedHash": "7834e1fc79a3ad4a0c40030e3552245ab1806759d67598d41a7c5953c661349f"
+    },
+    "brandkit": {
+      "source": "https://collectivebrain.de/en/skills/brandkit/SKILL.md",
+      "sourceType": "url",
+      "skillPath": "SKILL.md",
+      "computedHash": "2daf9e9e01b9b00bce9be33bab0d12ce9a6e020ebe1afb91754797f0794c6e58"
     }
   }
 }
