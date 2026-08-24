@@ -6,6 +6,12 @@
       "sourceType": "github",
       "skillPath": "skills/kling-3-prompting/SKILL.md",
       "computedHash": "9766ade65c0c2eb8b7807f2198440ed4e6a1bb3ffef313028405db562e20b803"
+    },
+    "anydesign": {
+      "source": "uxKero/anydesign",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "7834e1fc79a3ad4a0c40030e3552245ab1806759d67598d41a7c5953c661349f"
     }
   }
 }
