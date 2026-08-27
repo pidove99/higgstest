@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "higgsfield": {
+      "command": "node",
+      "args": ["${CLAUDE_PROJECT_DIR:-.}/mcp-higgsfield/src/server.mjs"],
+      "env": {
+        "HIGGSFIELD_API_KEY": "${HIGGSFIELD_API_KEY:-}",
+        "HIGGSFIELD_API_SECRET": "${HIGGSFIELD_API_SECRET:-}",
+        "HIGGSFIELD_CREDENTIALS": "${HIGGSFIELD_CREDENTIALS:-}",
+        "HIGGSFIELD_BASE_URL": "${HIGGSFIELD_BASE_URL:-https://platform.higgsfield.ai}"
+      }
+    }
+  }
+}

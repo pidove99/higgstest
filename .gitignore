@@ -1,0 +1,7 @@
+# 자격 증명 — 절대 커밋하지 않습니다
+.env
+.env.local
+.env.*.local
+
+node_modules/
+npm-debug.log*

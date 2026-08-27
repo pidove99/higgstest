@@ -1,0 +1,22 @@
+{
+  "name": "higgsfield-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Higgsfield 계정 연동용 MCP 서버 (Claude Code stdio)",
+  "type": "module",
+  "bin": {
+    "higgsfield-mcp": "src/server.mjs"
+  },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "check": "node src/check-connection.mjs",
+    "test": "node --test \"test/*.test.mjs\""
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "zod": "^4.4.3"
+  }
+}
