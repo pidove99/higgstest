@@ -6,6 +6,12 @@
       "sourceType": "github",
       "skillPath": "skills/kling-3-prompting/SKILL.md",
       "computedHash": "9766ade65c0c2eb8b7807f2198440ed4e6a1bb3ffef313028405db562e20b803"
+    },
+    "seedance-2-5": {
+      "source": "local-upload",
+      "sourceType": "local",
+      "skillPath": ".claude/skills/seedance-2-5/SKILL.md",
+      "computedHash": "57f897106b1891588181792fc2dcf3eb6623b176e05cf81c08334b1f0528e18a"
     }
   }
 }
