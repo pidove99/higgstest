@@ -1,11 +1,14 @@
 """CGV 회차 오픈 알림 스크립트.
 
-지정한 CGV 상영시간표 페이지를 일정 간격으로 열어보고, 원하는 영화(와 추가 키워드)가
-페이지에 나타나면 PC 알림 + 소리로 알려준다. 예매/결제는 하지 않는다.
+CGV '영화별 예매' 화면을 일정 간격으로 새로고침하면서 지정한 극장 버튼을 차례로 눌러보고,
+원하는 시간대(예: 06:00~12:00)에 시작하는 회차가 올라오면 PC 알림 + 소리로 알려준다.
+예매/결제는 하지 않는다.
 
 사용 예:
-    python cgv_watch.py --url "<CGV 상영시간표 URL>" --movie "영화제목" --must "IMAX"
-    python cgv_watch.py --url "<URL>" --dump        # 페이지에서 읽힌 텍스트 확인용
+    python cgv_watch.py --url "<영화·날짜를 고른 상태의 CGV 예매 URL>" \
+        --movie "치이카와" --date 30 \
+        --theater 왕십리 --theater 용산아이파크몰 --theater 홍대 --theater 여의도 \
+        --from 06:00 --to 12:00 --headed
 """
 
 import argparse
@@ -22,58 +25,99 @@ from playwright.sync_api import TimeoutError as PlaywrightTimeout
 from playwright.sync_api import sync_playwright
 
 MIN_INTERVAL = 60  # 사이트에 부담을 주지 않도록 최소 확인 간격(초)
-TIME_PATTERN = re.compile(r"\b([01]?\d|2[0-3]):[0-5]\d\b")
+NO_SCHEDULE = "스케줄이 없습니다"
+TIME = r"([01]?\d|2[0-9]):([0-5]\d)"
+START_END_PATTERN = re.compile(TIME + r"\s*[~\-–]\s*" + TIME)
+TIME_PATTERN = re.compile(r"(?<![\d.])" + TIME + r"(?!\d)")
 
 
 def log(msg):
     print(f"[{datetime.now():%H:%M:%S}] {msg}", flush=True)
 
 
-def fetch_page_text(browser, url, settle_seconds):
-    """페이지를 열고 JS 렌더링이 끝난 뒤의 화면 텍스트를 돌려준다."""
-    page = browser.new_page(locale="ko-KR")
-    try:
-        page.goto(url, wait_until="domcontentloaded", timeout=45_000)
+def to_minutes(hhmm):
+    h, m = hhmm.split(":")
+    return int(h) * 60 + int(m)
+
+
+def start_times(text):
+    """화면 텍스트에서 회차 시작 시각 목록을 뽑는다. 'HH:MM ~ HH:MM' 형식이면 앞쪽만 쓴다."""
+    if NO_SCHEDULE in text:
+        return []
+    pairs = START_END_PATTERN.findall(text)
+    if pairs:
+        found = [f"{int(h):02d}:{m}" for h, m, _, _ in pairs]
+    else:
+        found = [f"{int(h):02d}:{m}" for h, m in TIME_PATTERN.findall(text)]
+    return sorted(set(found))
+
+
+def click_text(page, label):
+    """버튼/칩을 보이는 글자 그대로 찾아 누른다."""
+    for locator in (
+        page.get_by_role("button", name=label, exact=True),
+        page.get_by_role("tab", name=label, exact=True),
+        page.get_by_text(label, exact=True),
+    ):
         try:
-            page.wait_for_load_state("networkidle", timeout=15_000)
-        except PlaywrightTimeout:
-            pass
-        page.wait_for_timeout(settle_seconds * 1000)
-        return page.inner_text("body")
-    finally:
-        page.close()
+            if locator.count() > 0:
+                locator.first.click(timeout=5_000)
+                return True
+        except Exception:
+            continue
+    return False
 
 
-def find_match(text, movie, must, need_time):
-    """조건을 만족하면 영화 제목 주변 텍스트를 돌려주고, 아니면 None."""
-    norm = re.sub(r"\s+", " ", text)
-    if any(word not in norm for word in must):
-        return None
-    # 배너 등에 제목만 있는 경우를 걸러내려고, 제목 바로 뒤에 상영시각이 있는 위치를 찾는다
-    for m in re.finditer(re.escape(movie), norm):
-        after = norm[m.start(): m.start() + 400]
-        if not need_time or TIME_PATTERN.search(after):
-            return norm[max(0, m.start() - 40): m.start() + 300]
-    return None
+def settle(page, seconds):
+    try:
+        page.wait_for_load_state("networkidle", timeout=10_000)
+    except PlaywrightTimeout:
+        pass
+    page.wait_for_timeout(seconds * 1000)
+
+
+def check_once(page, args):
+    """새로고침 후 극장별로 눌러보고 {극장: [시작시각...]}(시간대 안쪽만)을 돌려준다."""
+    if args.reload:
+        page.reload(wait_until="domcontentloaded", timeout=45_000)
+        settle(page, args.settle)
+    body = page.inner_text("body")
+    if args.movie and args.movie not in body:
+        log(f"화면에서 '{args.movie}'를 찾지 못했습니다. 새로고침하면 영화 선택이 풀리는지 확인하세요.")
+    if args.date and not click_text(page, args.date):
+        log(f"날짜 '{args.date}' 버튼을 찾지 못했습니다.")
+    settle(page, 1)
+
+    result, dumps = {}, {}
+    for theater in args.theater:
+        if not click_text(page, theater):
+            log(f"극장 '{theater}' 버튼을 찾지 못했습니다. 화면에 극장 즐겨찾기가 되어 있는지 확인하세요.")
+            continue
+        settle(page, args.settle)
+        text = page.inner_text("body")
+        dumps[theater] = text
+        times = start_times(text)
+        result[theater] = [t for t in times if args.start <= to_minutes(t) <= args.end]
+    return result, dumps
 
 
 def notify(title, message):
-    system = platform.system()
     try:
         from plyer import notification
 
         notification.notify(title=title, message=message[:250], timeout=30)
+        return
     except Exception:
-        try:
-            if system == "Darwin":
-                subprocess.run(
-                    ["osascript", "-e", f'display notification "{message[:200]}" with title "{title}"'],
-                    check=False,
-                )
-            elif system == "Linux":
-                subprocess.run(["notify-send", title, message[:250]], check=False)
-        except FileNotFoundError:
-            pass
+        pass
+    system = platform.system()
+    try:
+        if system == "Darwin":
+            subprocess.run(["osascript", "-e", f'display notification "{message[:200]}" with title "{title}"'],
+                           check=False)
+        elif system == "Linux":
+            subprocess.run(["notify-send", title, message[:250]], check=False)
+    except FileNotFoundError:
+        pass
 
 
 def beep(times):
@@ -97,21 +141,23 @@ def beep(times):
 
 def parse_args():
     p = argparse.ArgumentParser(description="CGV 회차 오픈 알림 (예매는 직접)")
-    p.add_argument("--url", required=True, help="확인할 CGV 상영시간표/예매 페이지 URL")
-    p.add_argument("--movie", help="찾을 영화 제목(페이지에 표시되는 그대로의 일부)")
-    p.add_argument("--must", action="append", default=[],
-                   help="함께 있어야 하는 키워드 (예: IMAX, 4DX, 무대인사). 여러 번 지정 가능")
-    p.add_argument("--no-time-check", action="store_true",
-                   help="영화 제목 뒤에 상영시각(HH:MM)이 있는지 확인하지 않음")
-    p.add_argument("--interval", type=int, default=180, help=f"확인 간격(초), 최소 {MIN_INTERVAL}")
-    p.add_argument("--settle", type=int, default=3, help="페이지 로딩 후 추가 대기(초)")
-    p.add_argument("--headed", action="store_true", help="브라우저 창을 띄워서 확인 (차단될 때 시도)")
-    p.add_argument("--keep", action="store_true", help="발견 후에도 계속 확인")
+    p.add_argument("--url", required=True, help="영화(와 날짜)를 고른 상태의 CGV 예매 페이지 URL")
+    p.add_argument("--theater", action="append", required=True,
+                   help="확인할 극장 버튼 이름 (화면에 보이는 그대로). 여러 번 지정")
+    p.add_argument("--movie", help="화면에 이 글자가 있는지 확인 (선택이 풀렸는지 점검용)")
+    p.add_argument("--date", help="매번 누를 날짜 버튼의 숫자 (예: 30)")
+    p.add_argument("--from", dest="start_s", default="00:00", help="회차 시작 시각 하한 (예: 06:00)")
+    p.add_argument("--to", dest="end_s", default="23:59", help="회차 시작 시각 상한 (예: 12:00)")
+    p.add_argument("--interval", type=int, default=120, help=f"확인 간격(초), 최소 {MIN_INTERVAL}")
+    p.add_argument("--settle", type=int, default=2, help="클릭/로딩 후 추가 대기(초)")
+    p.add_argument("--headed", action="store_true", help="브라우저 창을 띄워서 확인 (권장)")
+    p.add_argument("--no-reload", dest="reload", action="store_false",
+                   help="새로고침 없이 극장 버튼만 다시 눌러 확인")
+    p.add_argument("--keep", action="store_true", help="발견 후에도 계속 감시 (새로 생긴 회차만 알림)")
     p.add_argument("--no-open", action="store_true", help="발견 시 기본 브라우저로 페이지를 열지 않음")
-    p.add_argument("--dump", action="store_true", help="한 번만 읽고 페이지 텍스트를 page_dump.txt로 저장")
+    p.add_argument("--dump", action="store_true", help="한 번만 확인하고 극장별 화면 텍스트를 page_dump.txt로 저장")
     args = p.parse_args()
-    if not args.dump and not args.movie:
-        p.error("--movie 가 필요합니다 (텍스트 확인만 하려면 --dump)")
+    args.start, args.end = to_minutes(args.start_s), to_minutes(args.end_s)
     if args.interval < MIN_INTERVAL:
         log(f"간격이 너무 짧아 {MIN_INTERVAL}초로 조정합니다.")
         args.interval = MIN_INTERVAL
@@ -122,31 +168,41 @@ def main():
     args = parse_args()
     with sync_playwright() as pw:
         browser = pw.chromium.launch(headless=not args.headed)
+        page = browser.new_page(locale="ko-KR", viewport={"width": 900, "height": 1400})
         try:
+            page.goto(args.url, wait_until="domcontentloaded", timeout=45_000)
+            settle(page, args.settle)
+
             if args.dump:
-                text = fetch_page_text(browser, args.url, args.settle)
+                result, dumps = check_once(page, args)
                 with open("page_dump.txt", "w", encoding="utf-8") as f:
-                    f.write(text)
-                log(f"page_dump.txt 저장 완료 ({len(text)}자). 영화 제목이 어떻게 보이는지 확인하세요.")
+                    for theater, text in dumps.items():
+                        f.write(f"===== {theater} =====\n{text}\n\n")
+                for theater in args.theater:
+                    log(f"{theater}: {result.get(theater, '버튼 못 찾음')}")
+                log("page_dump.txt 저장 완료. 극장별로 상영시각이 제대로 보이는지 확인하세요.")
                 return
 
-            cond = f"'{args.movie}'" + "".join(f" + '{w}'" for w in args.must)
-            log(f"감시 시작: {cond} / {args.interval}초 간격 (Ctrl+C로 종료)")
+            window = f"{args.start_s}~{args.end_s}"
+            log(f"감시 시작: {', '.join(args.theater)} / 시작시각 {window} / {args.interval}초 간격 (Ctrl+C로 종료)")
+            seen = set()
             while True:
                 try:
-                    text = fetch_page_text(browser, args.url, args.settle)
-                    snippet = find_match(text, args.movie, args.must, not args.no_time_check)
-                    if snippet:
-                        log("회차 발견!")
-                        log(snippet)
-                        notify("CGV 회차 오픈!", snippet)
+                    result, _ = check_once(page, args)
+                    new = {th: [t for t in ts if (th, t) not in seen] for th, ts in result.items()}
+                    new = {th: ts for th, ts in new.items() if ts}
+                    if new:
+                        msg = " / ".join(f"{th} {', '.join(ts)}" for th, ts in new.items())
+                        log(f"회차 발견! {msg}")
+                        notify("CGV 회차 오픈!", msg)
                         if not args.no_open:
                             webbrowser.open(args.url)
                         beep(5)
+                        seen.update((th, t) for th, ts in new.items() for t in ts)
                         if not args.keep:
                             return
                     else:
-                        log("아직 없음")
+                        log("아직 없음 (" + ", ".join(f"{th} {len(ts)}" for th, ts in result.items()) + ")")
                 except PlaywrightTimeout:
                     log("페이지 로딩 시간 초과, 다음 회차에 재시도")
                 except Exception as e:  # 네트워크 오류 등으로 감시가 멈추지 않게
