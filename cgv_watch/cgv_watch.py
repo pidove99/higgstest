@@ -171,8 +171,13 @@ def parse_args():
 def main():
     args = parse_args()
     with sync_playwright() as pw:
-        browser = pw.chromium.launch(headless=not args.headed)
-        page = browser.new_page(locale="ko-KR", viewport={"width": 900, "height": 1400})
+        if args.headed:
+            # 창 크기를 모니터에 맞춘다 (고정 크기면 화면 아래가 잘린다)
+            browser = pw.chromium.launch(headless=False, args=["--start-maximized"])
+            page = browser.new_page(locale="ko-KR", no_viewport=True)
+        else:
+            browser = pw.chromium.launch(headless=True)
+            page = browser.new_page(locale="ko-KR", viewport={"width": 900, "height": 1400})
         try:
             page.goto(args.url, wait_until="domcontentloaded", timeout=45_000)
             settle(page, args.settle)
