@@ -153,11 +153,15 @@ def parse_args():
     p.add_argument("--headed", action="store_true", help="브라우저 창을 띄워서 확인 (권장)")
     p.add_argument("--no-reload", dest="reload", action="store_false",
                    help="새로고침 없이 극장 버튼만 다시 눌러 확인")
+    p.add_argument("--setup", action="store_true",
+                   help="창이 열리면 직접 영화/날짜/극장을 고른 뒤 Enter. 이후 새로고침 없이 극장 버튼만 눌러 확인")
     p.add_argument("--keep", action="store_true", help="발견 후에도 계속 감시 (새로 생긴 회차만 알림)")
     p.add_argument("--no-open", action="store_true", help="발견 시 기본 브라우저로 페이지를 열지 않음")
     p.add_argument("--dump", action="store_true", help="한 번만 확인하고 극장별 화면 텍스트를 page_dump.txt로 저장")
     args = p.parse_args()
     args.start, args.end = to_minutes(args.start_s), to_minutes(args.end_s)
+    if args.setup:
+        args.headed, args.reload = True, False
     if args.interval < MIN_INTERVAL:
         log(f"간격이 너무 짧아 {MIN_INTERVAL}초로 조정합니다.")
         args.interval = MIN_INTERVAL
@@ -172,6 +176,10 @@ def main():
         try:
             page.goto(args.url, wait_until="domcontentloaded", timeout=45_000)
             settle(page, args.settle)
+            if args.setup:
+                print("\n열린 크롬 창에서 영화와 날짜를 고르고, 확인할 극장이 버튼으로 보이게 추가하세요.")
+                print("(로그인이 필요하면 그 창에서 로그인하세요.) 준비되면 여기서 Enter를 누르세요.")
+                input()
 
             if args.dump:
                 result, dumps = check_once(page, args)
