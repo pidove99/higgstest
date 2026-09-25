@@ -127,10 +127,19 @@ def beep(times):
     for _ in range(times):
         try:
             if system == "Windows":
+                import os
                 import winsound
 
-                winsound.Beep(1200, 400)
-                winsound.Beep(900, 400)
+                # Beep()은 PC에 따라 소리가 안 나서, Windows 기본 알람 소리 파일을 재생한다
+                media = os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "Media")
+                for name in ("Alarm01.wav", "Windows Notify System Generic.wav", "notify.wav"):
+                    wav = os.path.join(media, name)
+                    if os.path.exists(wav):
+                        winsound.PlaySound(wav, winsound.SND_FILENAME)
+                        break
+                else:
+                    winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
+                    time.sleep(1)
             elif system == "Darwin":
                 subprocess.run(["afplay", "/System/Library/Sounds/Glass.aiff"], check=False)
             else:
