@@ -169,6 +169,8 @@ def parse_args():
                    help="새로고침 없이 극장 버튼만 다시 눌러 확인")
     p.add_argument("--setup", action="store_true",
                    help="창이 열리면 직접 영화/날짜/극장을 고른 뒤 Enter. 이후 새로고침 없이 극장 버튼만 눌러 확인")
+    p.add_argument("--new-only", action="store_true",
+                   help="시작할 때 이미 있던 회차는 무시하고, 새로 생긴 회차만 알림 (계속 감시)")
     p.add_argument("--keep", action="store_true", help="발견 후에도 계속 감시 (새로 생긴 회차만 알림)")
     p.add_argument("--no-open", action="store_true", help="발견 시 기본 브라우저로 페이지를 열지 않음")
     p.add_argument("--dump", action="store_true", help="한 번만 확인하고 극장별 화면 텍스트를 page_dump.txt로 저장")
@@ -224,20 +226,36 @@ def main():
             window = f"{args.start_s}~{args.end_s}"
             log(f"감시 시작: {', '.join(args.theater)} / 시작시각 {window} / {args.interval:g}초 쉬고 반복 (Ctrl+C로 종료)")
             seen = set()
+            based = set()  # --new-only: 처음 확인한 회차를 기준으로 기록한 극장
+            pending = set()  # --new-only: 한 번 보인 새 회차 (다음 바퀴에도 보이면 알림)
             while True:
                 try:
                     result, _ = check_once(page, args)
-                    new = {th: [t for t in ts if (th, t) not in seen] for th, ts in result.items()}
-                    new = {th: ts for th, ts in new.items() if ts}
+                    if args.new_only:
+                        for th in [th for th in result if th not in based]:
+                            based.add(th)
+                            seen.update((th, t) for t in result[th])
+                            log(f"기준 회차 {th}: {', '.join(result[th]) or '없음'}")
+                        current = {(th, t) for th, ts in result.items() for t in ts}
+                        # 화면 전환이 덜 된 순간을 새 회차로 착각하지 않도록 두 바퀴 연속 보여야 알린다
+                        fresh = current - seen
+                        confirmed, pending = fresh & pending, fresh
+                        new = {}
+                        for th, t in sorted(confirmed):
+                            new.setdefault(th, []).append(t)
+                    else:
+                        new = {th: [t for t in ts if (th, t) not in seen] for th, ts in result.items()}
+                        new = {th: ts for th, ts in new.items() if ts}
                     if new:
                         msg = " / ".join(f"{th} {', '.join(ts)}" for th, ts in new.items())
-                        log(f"회차 발견! {msg}")
+                        log(f"{'새 회차 오픈!' if args.new_only else '회차 발견!'} {msg}")
                         notify("CGV 회차 오픈!", msg)
                         if not args.no_open:
                             webbrowser.open(args.url)
                         beep(5)
                         seen.update((th, t) for th, ts in new.items() for t in ts)
-                        if not args.keep:
+                        pending -= seen
+                        if not (args.keep or args.new_only):
                             return
                     else:
                         log("아직 없음 (" + ", ".join(f"{th} {len(ts)}" for th, ts in result.items()) + ")")
