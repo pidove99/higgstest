@@ -24,7 +24,7 @@ from datetime import datetime
 from playwright.sync_api import TimeoutError as PlaywrightTimeout
 from playwright.sync_api import sync_playwright
 
-MIN_INTERVAL = 10  # 사이트에 부담을 주지 않도록 최소 확인 간격(초)
+MIN_INTERVAL = 0  # 0이면 한 바퀴 끝나자마자 바로 다음 바퀴
 NO_SCHEDULE = "스케줄이 없습니다"
 TIME = r"([01]?\d|2[0-9]):([0-5]\d)"
 START_END_PATTERN = re.compile(TIME + r"\s*[~\-–]\s*" + TIME)
@@ -68,12 +68,12 @@ def click_text(page, label):
     return False
 
 
-def settle(page, seconds):
+def settle(page, seconds, idle_timeout=10):
     try:
-        page.wait_for_load_state("networkidle", timeout=10_000)
+        page.wait_for_load_state("networkidle", timeout=idle_timeout * 1000)
     except PlaywrightTimeout:
         pass
-    page.wait_for_timeout(seconds * 1000)
+    page.wait_for_timeout(int(seconds * 1000))
 
 
 def check_once(page, args):
@@ -84,16 +84,18 @@ def check_once(page, args):
     body = page.inner_text("body")
     if args.movie and args.movie not in body:
         log(f"화면에서 '{args.movie}'를 찾지 못했습니다. 새로고침하면 영화 선택이 풀리는지 확인하세요.")
-    if args.date and not click_text(page, args.date):
-        log(f"날짜 '{args.date}' 버튼을 찾지 못했습니다.")
-    settle(page, 1)
+    # 새로고침 없이 감시할 때는 날짜 선택이 그대로 유지되므로 다시 누르지 않는다
+    if args.reload and args.date:
+        if not click_text(page, args.date):
+            log(f"날짜 '{args.date}' 버튼을 찾지 못했습니다.")
+        settle(page, 1)
 
     result, dumps = {}, {}
     for theater in args.theater:
         if not click_text(page, theater):
             log(f"극장 '{theater}' 버튼을 찾지 못했습니다. 화면에 극장 즐겨찾기가 되어 있는지 확인하세요.")
             continue
-        settle(page, args.settle)
+        settle(page, args.settle, idle_timeout=3)
         text = page.inner_text("body")
         dumps[theater] = text
         times = start_times(text)
@@ -148,8 +150,8 @@ def parse_args():
     p.add_argument("--date", help="매번 누를 날짜 버튼의 숫자 (예: 30)")
     p.add_argument("--from", dest="start_s", default="00:00", help="회차 시작 시각 하한 (예: 06:00)")
     p.add_argument("--to", dest="end_s", default="23:59", help="회차 시작 시각 상한 (예: 12:00)")
-    p.add_argument("--interval", type=int, default=120, help=f"확인 간격(초), 최소 {MIN_INTERVAL}")
-    p.add_argument("--settle", type=int, default=2, help="클릭/로딩 후 추가 대기(초)")
+    p.add_argument("--interval", type=float, default=120, help="한 바퀴 끝난 뒤 쉬는 시간(초). 0이면 바로 다음 바퀴")
+    p.add_argument("--settle", type=float, default=1.5, help="극장 버튼을 누른 뒤 화면을 읽기 전 대기(초)")
     p.add_argument("--headed", action="store_true", help="브라우저 창을 띄워서 확인 (권장)")
     p.add_argument("--no-reload", dest="reload", action="store_false",
                    help="새로고침 없이 극장 버튼만 다시 눌러 확인")
@@ -162,9 +164,7 @@ def parse_args():
     args.start, args.end = to_minutes(args.start_s), to_minutes(args.end_s)
     if args.setup:
         args.headed, args.reload = True, False
-    if args.interval < MIN_INTERVAL:
-        log(f"간격이 너무 짧아 {MIN_INTERVAL}초로 조정합니다.")
-        args.interval = MIN_INTERVAL
+    args.interval = max(args.interval, MIN_INTERVAL)
     return args
 
 
@@ -197,7 +197,7 @@ def main():
                 return
 
             window = f"{args.start_s}~{args.end_s}"
-            log(f"감시 시작: {', '.join(args.theater)} / 시작시각 {window} / {args.interval}초 간격 (Ctrl+C로 종료)")
+            log(f"감시 시작: {', '.join(args.theater)} / 시작시각 {window} / {args.interval:g}초 쉬고 반복 (Ctrl+C로 종료)")
             seen = set()
             while True:
                 try:
@@ -220,7 +220,8 @@ def main():
                     log("페이지 로딩 시간 초과, 다음 회차에 재시도")
                 except Exception as e:  # 네트워크 오류 등으로 감시가 멈추지 않게
                     log(f"오류: {e!r}, 다음 회차에 재시도")
-                time.sleep(args.interval + random.uniform(0, args.interval * 0.2))
+                if args.interval > 0:
+                    time.sleep(args.interval + random.uniform(0, args.interval * 0.2))
         finally:
             browser.close()
 
