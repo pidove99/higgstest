@@ -1,29 +1,51 @@
 # CGV 회차 오픈 알림
 
-CGV **영화별 예매** 화면을 몇 분마다 새로고침합니다. 지정한 극장 버튼을 차례로 눌러 보고, 원하는 시간대에 **시작하는** 회차가 올라오면 **PC 알림, 소리, 브라우저 열기**로 알려줍니다.
+CGV **영화별 예매** 화면에서 지정한 극장 버튼을 계속 번갈아 눌러 봅니다. 원하는 시간대에 **시작하는** 회차가 올라오면 **명령 창 메시지, PC 알림 창, 알람 소리, 브라우저 열기**로 알려줍니다.
 **예매와 결제는 하지 않습니다.** 알림이 오면 직접 예매하세요.
 
 ## 설치 (처음 한 번)
 
-```bash
+```
 pip install playwright plyer
 python -m playwright install chromium
 ```
 
+`cgv_watch.py`를 원하는 폴더(예: 다운로드 폴더)에 저장하고, 명령 창에서 그 폴더로 이동합니다.
+
+```
+cd %USERPROFILE%\Downloads
+```
+
 ## 사용법
 
-1. 평소 쓰는 브라우저로 CGV **영화별 예매**에 들어가서 영화와 날짜를 고르고, 확인할 극장을 즐겨찾기 칩에 추가합니다.
-   그 상태에서 주소창의 URL을 복사합니다.
-2. 화면이 제대로 읽히는지 한 번만 확인합니다.
-   ```bash
-   python cgv_watch.py --url "복사한URL" --movie "치이카와" --date 30 ^
-     --theater 왕십리 --theater 용산아이파크몰 --theater 홍대 --theater 여의도 ^
-     --from 06:00 --to 12:00 --headed --dump
+1. **알림 미리 보기** (선택)
    ```
-   극장마다 찾은 시각이 출력되고, 화면 텍스트는 `page_dump.txt`에 저장됩니다.
-3. 문제가 없으면 `--dump`를 빼고 실행해 감시를 시작합니다.
+   python cgv_watch.py --test-alert
+   ```
+   회차를 찾았을 때와 똑같은 메시지, 알림 창, 페이지 열기, 알람 소리가 나옵니다.
 
-> Windows CMD에서는 줄바꿈 기호로 `^`를, macOS와 Linux에서는 `\`를 씁니다. 한 줄로 이어 써도 됩니다.
+2. **감시 시작**
+   ```
+   python cgv_watch.py --url "https://cgv.co.kr/cnm/movieBook/movie" --setup --date 30 --theater 왕십리 --theater 용산아이파크몰 --theater 홍대 --theater 여의도 --from 06:00 --to 12:00 --interval 0
+   ```
+
+3. 크롬 창이 열리면 영화와 날짜를 고르고, 확인할 극장이 버튼으로 보이게 추가합니다. 로그인이 필요하면 그 창에서 합니다.
+
+4. 명령 창으로 돌아와 **Enter**를 누르면 감시가 시작됩니다.
+   - 크롬 창은 닫지 마세요.
+   - 멈추려면 명령 창에서 **Ctrl + C**를 누릅니다.
+   - 명령 창 안을 마우스로 클릭하면 일시정지됩니다. 이때는 **Esc**를 누르면 다시 돌아갑니다.
+
+### 제대로 읽는지 점검하기
+
+회차가 이미 있는 날짜로 한 번만 확인해 봅니다.
+
+```
+python cgv_watch.py --url "https://cgv.co.kr/cnm/movieBook/movie" --setup --theater 여의도 --from 00:00 --to 23:59 --dump
+```
+
+- 극장마다 찾은 시각이 출력되고, 화면 텍스트는 `page_dump.txt`에 저장됩니다.
+- 시각이 `[]`로만 나오면 `page_dump.txt`를 확인하세요.
 
 ## 옵션
 

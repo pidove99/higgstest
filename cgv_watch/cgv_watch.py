@@ -145,7 +145,8 @@ def beep(times):
             else:
                 print("\a", end="", flush=True)
                 time.sleep(0.8)
-        except Exception:
+        except Exception as e:  # 소리가 안 날 때 원인을 볼 수 있게 남긴다
+            log(f"알람 소리 재생 실패: {e!r}")
             print("\a", end="", flush=True)
         time.sleep(0.3)
 
