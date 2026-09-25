@@ -24,7 +24,7 @@ from datetime import datetime
 from playwright.sync_api import TimeoutError as PlaywrightTimeout
 from playwright.sync_api import sync_playwright
 
-MIN_INTERVAL = 60  # 사이트에 부담을 주지 않도록 최소 확인 간격(초)
+MIN_INTERVAL = 10  # 사이트에 부담을 주지 않도록 최소 확인 간격(초)
 NO_SCHEDULE = "스케줄이 없습니다"
 TIME = r"([01]?\d|2[0-9]):([0-5]\d)"
 START_END_PATTERN = re.compile(TIME + r"\s*[~\-–]\s*" + TIME)
