@@ -152,8 +152,10 @@ def beep(times):
 
 def parse_args():
     p = argparse.ArgumentParser(description="CGV 회차 오픈 알림 (예매는 직접)")
-    p.add_argument("--url", required=True, help="영화(와 날짜)를 고른 상태의 CGV 예매 페이지 URL")
-    p.add_argument("--theater", action="append", required=True,
+    p.add_argument("--test-alert", action="store_true",
+                   help="회차를 찾았을 때 나오는 알림을 CGV 확인 없이 미리 보고 종료")
+    p.add_argument("--url", help="영화(와 날짜)를 고른 상태의 CGV 예매 페이지 URL")
+    p.add_argument("--theater", action="append",
                    help="확인할 극장 버튼 이름 (화면에 보이는 그대로). 여러 번 지정")
     p.add_argument("--movie", help="화면에 이 글자가 있는지 확인 (선택이 풀렸는지 점검용)")
     p.add_argument("--date", help="매번 누를 날짜 버튼의 숫자 (예: 30)")
@@ -170,6 +172,10 @@ def parse_args():
     p.add_argument("--no-open", action="store_true", help="발견 시 기본 브라우저로 페이지를 열지 않음")
     p.add_argument("--dump", action="store_true", help="한 번만 확인하고 극장별 화면 텍스트를 page_dump.txt로 저장")
     args = p.parse_args()
+    if args.test_alert:
+        return args
+    if not args.url or not args.theater:
+        p.error("--url 과 --theater 가 필요합니다")
     args.start, args.end = to_minutes(args.start_s), to_minutes(args.end_s)
     if args.setup:
         args.headed, args.reload = True, False
@@ -179,6 +185,15 @@ def parse_args():
 
 def main():
     args = parse_args()
+    if args.test_alert:
+        # 실제로 회차를 찾았을 때와 똑같이 알린다 (CGV 확인은 하지 않음)
+        msg = "여의도 09:30, 10:50 / 홍대 11:20 (테스트)"
+        log(f"회차 발견! {msg}")
+        notify("CGV 회차 오픈!", msg)
+        if not args.no_open:
+            webbrowser.open(args.url or "https://cgv.co.kr/cnm/movieBook/movie")
+        beep(5)
+        return
     with sync_playwright() as pw:
         if args.headed:
             # 창 크기를 모니터에 맞춘다 (고정 크기면 화면 아래가 잘린다)
