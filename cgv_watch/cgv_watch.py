@@ -68,6 +68,45 @@ def click_text(page, label):
     return False
 
 
+def open_showtime(page, args, theater, hhmm):
+    """감시 중인 창에서 극장과 회차 버튼을 눌러 좌석 선택 화면까지만 연다. 좌석은 고르지 않는다."""
+    if not click_text(page, theater):
+        return False
+    settle(page, args.settle, idle_timeout=3)
+    labels = [hhmm] + ([hhmm[1:]] if hhmm.startswith("0") else [])
+    for label in labels:
+        if click_text(page, label):
+            return True
+    return False
+
+
+def hold_window(opened):
+    """좌석 화면을 연 브라우저가 닫히지 않도록 사용자가 끝낼 때까지 기다린다."""
+    if opened:
+        print("\n크롬 창에 좌석 선택 화면을 열어 두었습니다. 좌석 선택과 결제는 직접 하세요.")
+    else:
+        print("\n회차 버튼을 누르지 못했습니다. 크롬 창에서 직접 회차를 눌러 주세요.")
+    input("예매를 마치면 여기서 Enter를 눌러 종료하세요. (먼저 누르면 크롬 창이 닫힙니다)\n")
+
+
+PAGE_TEXT_JS = """() => {
+  const out = [];
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  while (walker.nextNode()) {
+    const el = walker.currentNode.parentElement;
+    if (!el || ["SCRIPT", "STYLE", "NOSCRIPT"].includes(el.tagName)) continue;
+    const t = walker.currentNode.textContent.trim();
+    if (t) out.push(t);
+  }
+  return out.join("\\n");
+}"""
+
+
+def page_text(page):
+    """화면 글자를 요소마다 줄을 나눠 읽는다. (나란히 붙은 시간 버튼이 '13:2015:30'처럼 붙지 않게)"""
+    return page.evaluate(PAGE_TEXT_JS)
+
+
 def settle(page, seconds, idle_timeout=10):
     try:
         page.wait_for_load_state("networkidle", timeout=idle_timeout * 1000)
@@ -81,7 +120,7 @@ def check_once(page, args):
     if args.reload:
         page.reload(wait_until="domcontentloaded", timeout=45_000)
         settle(page, args.settle)
-    body = page.inner_text("body")
+    body = page_text(page)
     if args.movie and args.movie not in body:
         log(f"화면에서 '{args.movie}'를 찾지 못했습니다. 새로고침하면 영화 선택이 풀리는지 확인하세요.")
     # 새로고침 없이 감시할 때는 날짜 선택이 그대로 유지되므로 다시 누르지 않는다
@@ -96,7 +135,7 @@ def check_once(page, args):
             log(f"극장 '{theater}' 버튼을 찾지 못했습니다. 화면에 극장 즐겨찾기가 되어 있는지 확인하세요.")
             continue
         settle(page, args.settle, idle_timeout=3)
-        text = page.inner_text("body")
+        text = page_text(page)
         dumps[theater] = text
         times = start_times(text)
         result[theater] = [t for t in times if args.start <= to_minutes(t) <= args.end]
@@ -171,6 +210,12 @@ def parse_args():
                    help="창이 열리면 직접 영화/날짜/극장을 고른 뒤 Enter. 이후 새로고침 없이 극장 버튼만 눌러 확인")
     p.add_argument("--new-only", action="store_true",
                    help="시작할 때 이미 있던 회차는 무시하고, 새로 생긴 회차만 알림 (계속 감시)")
+    p.add_argument("--earlier-only", action="store_true",
+                   help="--new-only와 함께: 극장별 기존 첫 회차보다 이른 새 회차만 알림")
+    p.add_argument("--open-seat", action="store_true",
+                   help="새 회차를 찾으면 감시 중인 창에서 그 회차의 좌석 선택 화면까지 열어 둠 (좌석은 직접 선택)")
+    p.add_argument("--test-open", action="store_true",
+                   help="지금 있는 가장 빠른 회차로 알림 + 좌석 선택 화면 열기를 시험")
     p.add_argument("--keep", action="store_true", help="발견 후에도 계속 감시 (새로 생긴 회차만 알림)")
     p.add_argument("--no-open", action="store_true", help="발견 시 기본 브라우저로 페이지를 열지 않음")
     p.add_argument("--dump", action="store_true", help="한 번만 확인하고 극장별 화면 텍스트를 page_dump.txt로 저장")
@@ -197,6 +242,8 @@ def main():
             webbrowser.open(args.url or "https://cgv.co.kr/cnm/movieBook/movie")
         beep(5)
         return
+    if args.test_open:
+        args.setup, args.headed, args.reload = True, True, False
     with sync_playwright() as pw:
         if args.headed:
             # 창 크기를 모니터에 맞춘다 (고정 크기면 화면 아래가 잘린다)
@@ -223,10 +270,26 @@ def main():
                 log("page_dump.txt 저장 완료. 극장별로 상영시각이 제대로 보이는지 확인하세요.")
                 return
 
+            if args.test_open:
+                # 새 회차를 기다리지 않고, 지금 있는 가장 빠른 회차로 알림 + 좌석 화면 열기를 시험한다
+                result, _ = check_once(page, args)
+                found = [(ts[0], th) for th, ts in result.items() if ts]
+                if not found:
+                    log("회차를 하나도 찾지 못했습니다. 상영 중인 영화와 날짜를 골랐는지 확인하세요.")
+                    return
+                t, th = min(found)
+                log(f"[테스트] 회차 발견! {th} {t}")
+                opened = open_showtime(page, args, th, t)
+                notify("CGV 회차 오픈! (테스트)", f"{th} {t}")
+                beep(1)
+                hold_window(opened)
+                return
+
             window = f"{args.start_s}~{args.end_s}"
             log(f"감시 시작: {', '.join(args.theater)} / 시작시각 {window} / {args.interval:g}초 쉬고 반복 (Ctrl+C로 종료)")
             seen = set()
             based = set()  # --new-only: 처음 확인한 회차를 기준으로 기록한 극장
+            first = {}  # --earlier-only: 극장별 기준 첫 회차
             pending = set()  # --new-only: 한 번 보인 새 회차 (다음 바퀴에도 보이면 알림)
             while True:
                 try:
@@ -235,6 +298,8 @@ def main():
                         for th in [th for th in result if th not in based]:
                             based.add(th)
                             seen.update((th, t) for t in result[th])
+                            if result[th]:
+                                first[th] = min(result[th])
                             log(f"기준 회차 {th}: {', '.join(result[th]) or '없음'}")
                         current = {(th, t) for th, ts in result.items() for t in ts}
                         # 화면 전환이 덜 된 순간을 새 회차로 착각하지 않도록 두 바퀴 연속 보여야 알린다
@@ -242,6 +307,8 @@ def main():
                         confirmed, pending = fresh & pending, fresh
                         new = {}
                         for th, t in sorted(confirmed):
+                            if args.earlier_only and th in first and t >= first[th]:
+                                continue  # 기존 첫 회차보다 늦은 회차는 알리지 않는다
                             new.setdefault(th, []).append(t)
                     else:
                         new = {th: [t for t in ts if (th, t) not in seen] for th, ts in result.items()}
@@ -249,10 +316,17 @@ def main():
                     if new:
                         msg = " / ".join(f"{th} {', '.join(ts)}" for th, ts in new.items())
                         log(f"{'새 회차 오픈!' if args.new_only else '회차 발견!'} {msg}")
+                        opened = None
+                        if args.open_seat:
+                            t, th = min((ts[0], th) for th, ts in new.items())
+                            opened = open_showtime(page, args, th, t)
                         notify("CGV 회차 오픈!", msg)
-                        if not args.no_open:
+                        if not args.no_open and not args.open_seat:
                             webbrowser.open(args.url)
                         beep(5)
+                        if opened is not None:
+                            hold_window(opened)
+                            return
                         seen.update((th, t) for th, ts in new.items() for t in ts)
                         pending -= seen
                         if not (args.keep or args.new_only):

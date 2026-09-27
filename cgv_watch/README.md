@@ -38,6 +38,22 @@ cd %USERPROFILE%\Downloads
    - 멈추려면 명령 창에서 **Ctrl + C**를 누릅니다.
    - 명령 창 안을 마우스로 클릭하면 일시정지됩니다. 이때는 **Esc**를 누르면 다시 돌아갑니다.
 
+### 더 이른 회차만 알림 + 좌석 선택 화면 열기
+
+```
+python cgv_watch.py --url "https://cgv.co.kr/cnm/movieBook/movie" --setup --date 30 --theater 왕십리 --theater 용산아이파크몰 --theater 홍대 --theater 여의도 --new-only --earlier-only --open-seat --interval 0
+```
+
+- 예: 용산아이파크몰의 첫 회차가 13:20이면, 13:20보다 **이른 회차가 새로 열릴 때만** 알립니다.
+- 알림과 동시에 크롬 창에 그 회차의 **좌석 선택 화면**이 열립니다. 좌석 선택과 결제는 직접 하세요.
+- 예매를 마칠 때까지 명령 창에서 Enter를 누르지 마세요. Enter를 누르면 크롬 창이 닫힙니다.
+
+미리 시험해 보려면 상영 중인 아무 영화로 `--test-open`을 실행하세요.
+
+```
+python cgv_watch.py --url "https://cgv.co.kr/cnm/movieBook/movie" --test-open --theater 용산아이파크몰
+```
+
 ### 제대로 읽는지 점검하기
 
 회차가 이미 있는 날짜로 한 번만 확인해 봅니다.
@@ -61,6 +77,9 @@ python cgv_watch.py --url "https://cgv.co.kr/cnm/movieBook/movie" --setup --thea
 | `--headed` | 브라우저 창을 띄워서 확인합니다. **권장**합니다. |
 | `--no-reload` | 새로고침하지 않고 극장 버튼만 다시 눌러 확인합니다. |
 | `--new-only` | 시작할 때 있던 회차는 무시하고, **새로 생긴 회차만** 알립니다. 알린 뒤에도 계속 감시합니다. |
+| `--earlier-only` | `--new-only`와 함께 씁니다. 극장별 **기존 첫 회차보다 이른** 새 회차만 알립니다. |
+| `--open-seat` | 새 회차를 찾으면 감시 중인 크롬 창에서 그 회차를 눌러 **좌석 선택 화면까지만** 열어 둡니다. 좌석 선택과 결제는 직접 합니다. |
+| `--test-open` | 새 회차를 기다리지 않고, 지금 있는 가장 빠른 회차로 알림과 좌석 선택 화면 열기를 시험합니다. |
 | `--keep` | 발견한 뒤에도 계속 감시하고, 새로 생긴 회차만 알립니다. |
 | `--no-open` | 발견해도 브라우저를 열지 않습니다. |
 | `--dump` | 한 번만 확인하고 극장별 화면 텍스트를 `page_dump.txt`로 저장합니다. |
