@@ -5,6 +5,8 @@
   pip install playwright
   python -m playwright install chromium
   python megabox_seat_watch.py
+  python megabox_seat_watch.py --test   # 테스트: 1석만 남아도 바로 좌석창 진입
+  python megabox_seat_watch.py --test --time 10:30   # 다른 회차로 테스트
 
 1) 브라우저가 뜨면 로그인 → 빠른예매에서 날짜/영화/극장을 평소처럼 선택해 두기
    (스크린샷처럼 시간표에 대상 회차가 보이는 상태)
@@ -113,7 +115,30 @@ def confirm_popups(page, tries=5):
             break
 
 
+def parse_args():
+    global TARGET_TIME, TARGET_BRANCH, MIN_SEATS
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--test", action="store_true",
+                    help="테스트 모드: 잔여 1석 이상이면 바로 좌석창 진입")
+    ap.add_argument("--time", help="상영 시작 시간 (예: 10:30)")
+    ap.add_argument("--branch", help="극장명 (예: 인천논현)")
+    ap.add_argument("--min", type=int, help="최소 잔여석 수")
+    a = ap.parse_args()
+    if a.test:
+        MIN_SEATS = 1
+    if a.time:
+        TARGET_TIME = a.time
+    if a.branch:
+        TARGET_BRANCH = a.branch
+    if a.min is not None:
+        MIN_SEATS = a.min
+    mode = "[테스트 모드] " if a.test else ""
+    print(f"{mode}감시 대상: {TARGET_TIME} {TARGET_BRANCH} / {MIN_SEATS}석 이상")
+
+
 def main():
+    parse_args()
     with sync_playwright() as p:
         ctx = p.chromium.launch_persistent_context(
             PROFILE_DIR, headless=False, viewport={"width": 1400, "height": 900}
