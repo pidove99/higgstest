@@ -6,13 +6,14 @@
   python -m playwright install chromium
   python megabox_seat_watch.py
   python megabox_seat_watch.py --test   # 테스트: 1석만 남아도 바로 좌석창 진입
-  python megabox_seat_watch.py --test --time 10:30   # 다른 회차로 테스트
+  python megabox_seat_watch.py --target 09:40 인천논현 3 --target 10:00 송도 1
+      # 감시 대상 직접 지정 (시간 극장 최소좌석), 여러 개 가능
 
 1) 브라우저가 뜨면 로그인 → 빠른예매에서 날짜/영화/극장을 평소처럼 선택해 두기
    (스크린샷처럼 시간표에 대상 회차가 보이는 상태)
 2) 터미널에서 Enter
 3) 스크립트가 주기적으로 날짜를 다시 눌러 시간표를 새로고침하며 잔여석 확인
-4) 잔여석 >= MIN_SEATS 이면 알람 + 해당 회차 클릭 + '알림' 팝업 '확인' 클릭
+4) 대상 중 하나라도 잔여석이 기준 이상이면 알람 + 해당 회차 클릭 + '알림' 팝업 '확인' 클릭
    → 좌석선택 화면에서 직접 좌석 고르고 결제하면 됨
 """
 
@@ -24,17 +25,20 @@ import time
 from playwright.sync_api import sync_playwright
 
 # ===== 설정 =====
-TARGET_TIME = "09:40"          # 상영 시작 시간
-TARGET_BRANCH = "인천논현"      # 극장명 (시간표 오른쪽에 표시되는 이름)
+# 감시 대상: (상영시작시간, 극장명 일부, 최소 잔여석) - 여러 개 동시에 감시
+# 극장명은 시간표 오른쪽에 보이는 이름의 일부면 됨 (예: "송도" → 송도(트리플스트리트))
+TARGETS = [
+    ("09:40", "인천논현", 3),
+    ("10:00", "송도", 1),   # 지금 매진 → 한 자리라도 풀리면
+]
 TARGET_DATE_DAY = "30"         # 날짜 탭의 일(day) 숫자
 OTHER_DATE_DAYS = ["1", "2", "3"]  # 새로고침용으로 잠깐 눌렀다 돌아올 날짜 후보(앞에서부터 시도)
-MIN_SEATS = 3                  # 이 이상 남으면 알람
 INTERVAL_SEC = (20, 35)        # 새로고침 간격(랜덤) - 너무 짧게 하지 말 것
 PROFILE_DIR = "./megabox_profile"  # 로그인 유지용
 URL = "https://www.megabox.co.kr/booking"
 # ================
 
-VERSION = "v5 (날짜 클릭 보강판)"
+VERSION = "v6 (여러 회차 동시 감시)"
 SEAT_RE = re.compile(r"(\d+)\s*/\s*(\d+)")
 
 
@@ -57,12 +61,12 @@ def all_frames(page):
     return [f for f in page.frames if not f.is_detached()]
 
 
-def find_target(page):
+def find_target(page, t_time, t_branch):
     """시간표에서 대상 회차 요소와 잔여석 수를 찾는다. (locator, 잔여석 / 0=매진 / None=숫자 못 읽음)"""
     for frame in all_frames(page):
         try:
-            items = frame.locator("li, button, a").filter(has_text=TARGET_TIME).filter(
-                has_text=TARGET_BRANCH
+            items = frame.locator("li, button, a").filter(has_text=t_time).filter(
+                has_text=t_branch
             )
             n = items.count()
             # 가장 안쪽(텍스트가 짧은) 요소를 고른다
@@ -81,7 +85,7 @@ def find_target(page):
             el, txt = best
             if "매진" in txt:
                 return el, 0
-            m = SEAT_RE.search(txt.split(TARGET_BRANCH, 1)[-1]) or SEAT_RE.search(txt)
+            m = SEAT_RE.search(txt.split(t_branch, 1)[-1]) or SEAT_RE.search(txt)
             return el, int(m.group(1)) if m else None
     return None, None
 
@@ -173,16 +177,16 @@ def confirm_popups(page, tries=5):
             break
 
 
-def enter_seat_page(page, retries=3):
+def enter_seat_page(page, t_time, t_branch, retries=3):
     """대상 회차 클릭 → 팝업 확인. 프레임이 바뀌어도 다시 찾아서 재시도."""
     for _ in range(retries):
-        el, _ = find_target(page)
+        el, _ = find_target(page, t_time, t_branch)
         if el is None:
             page.wait_for_timeout(1000)
             continue
         try:
             # li를 잡았으면 그 안의 실제 버튼/링크를 누른다
-            inner = el.locator("button, a").filter(has_text=TARGET_TIME)
+            inner = el.locator("button, a").filter(has_text=t_time)
             if inner.count():
                 el = inner.first
             if not _try_click(el):
@@ -197,25 +201,21 @@ def enter_seat_page(page, retries=3):
 
 
 def parse_args():
-    global TARGET_TIME, TARGET_BRANCH, MIN_SEATS
+    global TARGETS
     import argparse
     ap = argparse.ArgumentParser()
     ap.add_argument("--test", action="store_true",
-                    help="테스트 모드: 잔여 1석 이상이면 바로 좌석창 진입")
-    ap.add_argument("--time", help="상영 시작 시간 (예: 10:30)")
-    ap.add_argument("--branch", help="극장명 (예: 인천논현)")
-    ap.add_argument("--min", type=int, help="최소 잔여석 수")
+                    help="테스트 모드: 모든 대상 최소좌석을 1로 (잔여 1석 이상이면 바로 좌석창 진입)")
+    ap.add_argument("--target", nargs=3, action="append", metavar=("시간", "극장", "최소좌석"),
+                    help="감시 대상 (예: --target 10:00 송도 1). 여러 번 쓸 수 있음")
     a = ap.parse_args()
+    if a.target:
+        TARGETS = [(t, b, int(n)) for t, b, n in a.target]
     if a.test:
-        MIN_SEATS = 1
-    if a.time:
-        TARGET_TIME = a.time
-    if a.branch:
-        TARGET_BRANCH = a.branch
-    if a.min is not None:
-        MIN_SEATS = a.min
-    mode = "[테스트 모드] " if a.test else ""
-    print(f"{mode}감시 대상: {TARGET_TIME} {TARGET_BRANCH} / {MIN_SEATS}석 이상")
+        TARGETS = [(t, b, 1) for t, b, _ in TARGETS]
+    print(("[테스트 모드] " if a.test else "") + "감시 대상:")
+    for t, b, n in TARGETS:
+        print(f"  - {t} {b} : {n}석 이상이면 알림")
 
 
 def main():
@@ -233,19 +233,25 @@ def main():
             try:
                 page = ctx.pages[-1]  # 사용자가 새 탭에서 예매창을 열었을 수도 있음
                 refresh(page)
-                el, seats = find_target(page)
                 now = time.strftime("%H:%M:%S")
-                if el is None:
-                    print(f"[{now}] {TARGET_TIME} {TARGET_BRANCH} 회차를 못 찾음 (선택 상태 확인)")
-                else:
-                    print(f"[{now}] {TARGET_TIME} {TARGET_BRANCH} 잔여석: "
-                          f"{'매진' if seats == 0 else seats}")
-                    if seats is not None and seats >= MIN_SEATS:
-                        page.bring_to_front()
-                        enter_seat_page(page)
-                        alarm(f"잔여 {seats}석! 좌석선택 화면으로 이동했습니다. 빨리 고르세요!")
-                        input("완료되면 Enter로 종료 ▶ ")
-                        break
+                hit = None
+                status = []
+                for t_time, t_branch, t_min in TARGETS:
+                    el, seats = find_target(page, t_time, t_branch)
+                    if el is None:
+                        status.append(f"{t_time} {t_branch}: 못 찾음")
+                        continue
+                    status.append(f"{t_time} {t_branch}: {'매진' if seats == 0 else seats}")
+                    if hit is None and seats is not None and seats >= t_min:
+                        hit = (t_time, t_branch, seats)
+                print(f"[{now}] " + " | ".join(status))
+                if hit:
+                    t_time, t_branch, seats = hit
+                    page.bring_to_front()
+                    enter_seat_page(page, t_time, t_branch)
+                    alarm(f"{t_time} {t_branch} 잔여 {seats}석! 좌석선택 화면으로 이동했습니다. 빨리 고르세요!")
+                    input("완료되면 Enter로 종료 ▶ ")
+                    break
             except Exception as e:
                 print("오류:", e)
             time.sleep(random.uniform(*INTERVAL_SEC))
