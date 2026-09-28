@@ -28,7 +28,6 @@ from playwright.sync_api import sync_playwright
 # 감시 대상: (상영시작시간, 극장명 일부, 최소 잔여석) - 여러 개 동시에 감시
 # 극장명은 시간표 오른쪽에 보이는 이름의 일부면 됨 (예: "송도" → 송도(트리플스트리트))
 TARGETS = [
-    ("09:40", "인천논현", 3),
     ("10:00", "송도", 1),   # 지금 매진 → 한 자리라도 풀리면
 ]
 TARGET_DATE_DAY = "30"         # 날짜 탭의 일(day) 숫자
@@ -38,7 +37,7 @@ PROFILE_DIR = "./megabox_profile"  # 로그인 유지용
 URL = "https://www.megabox.co.kr/booking"
 # ================
 
-VERSION = "v6 (여러 회차 동시 감시)"
+VERSION = "v7 (송도 10:00 감시)"
 SEAT_RE = re.compile(r"(\d+)\s*/\s*(\d+)")
 
 
