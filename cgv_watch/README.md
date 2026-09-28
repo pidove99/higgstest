@@ -54,6 +54,16 @@ python cgv_watch.py --url "https://cgv.co.kr/cnm/movieBook/movie" --setup --date
 python cgv_watch.py --url "https://cgv.co.kr/cnm/movieBook/movie" --test-open --theater 용산아이파크몰
 ```
 
+### 여러 날짜 한꺼번에 감시
+
+```
+python cgv_watch.py --url "https://cgv.co.kr/cnm/movieBook/movie" --setup --date 30 --date 10.1 --date 02 --date 03 --theater 용산아이파크몰 --theater 왕십리 --new-only --interval 0
+```
+
+- 매 바퀴 날짜 버튼을 차례로 누르고, 날짜마다 극장을 확인합니다. 결과는 `03일 용산아이파크몰`처럼 날짜별로 따로 기억합니다.
+- 날짜 버튼 이름은 화면에 보이는 그대로 씁니다(10월 1일은 `10.1`).
+- 날짜 × 극장 수만큼 시간이 걸립니다. 4일 × 2곳이면 한 바퀴에 약 15초입니다.
+
 ### 제대로 읽는지 점검하기
 
 회차가 이미 있는 날짜로 한 번만 확인해 봅니다.
@@ -70,7 +80,7 @@ python cgv_watch.py --url "https://cgv.co.kr/cnm/movieBook/movie" --setup --thea
 | 옵션 | 설명 |
 |---|---|
 | `--theater` | 눌러볼 극장 버튼 이름(화면에 보이는 그대로). 여러 번 쓸 수 있습니다. |
-| `--date` | 새로고침할 때마다 누를 날짜 버튼(예: `30`). |
+| `--date` | 확인할 날짜 버튼(예: `30`). 여러 번 쓰면 매 바퀴 날짜마다 번갈아 확인합니다(예: `--date 30 --date 10.1 --date 02 --date 03`). |
 | `--from` / `--to` | 알림을 받을 **회차 시작 시각** 범위(예: `06:00`, `12:00`). |
 | `--movie` | 새로고침 후에도 영화 선택이 유지되는지 점검할 글자입니다. |
 | `--interval` | 한 바퀴 끝난 뒤 쉬는 시간(초). 기본 120초이고, `0`이면 쉬지 않고 바로 다음 바퀴를 돕니다. |

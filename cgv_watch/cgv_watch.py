@@ -68,8 +68,13 @@ def click_text(page, label):
     return False
 
 
-def open_showtime(page, args, theater, hhmm):
-    """감시 중인 창에서 극장과 회차 버튼을 눌러 좌석 선택 화면까지만 연다. 좌석은 고르지 않는다."""
+def open_showtime(page, args, label, hhmm):
+    """감시 중인 창에서 날짜·극장·회차 버튼을 눌러 좌석 선택 화면까지만 연다. 좌석은 고르지 않는다."""
+    date, theater = args.targets[label]
+    if date and len(args.date) > 1:
+        if not click_text(page, date):
+            return False
+        settle(page, 0.5, idle_timeout=2)
     if not click_text(page, theater):
         return False
     settle(page, args.settle, idle_timeout=3)
@@ -123,22 +128,29 @@ def check_once(page, args):
     body = page_text(page)
     if args.movie and args.movie not in body:
         log(f"화면에서 '{args.movie}'를 찾지 못했습니다. 새로고침하면 영화 선택이 풀리는지 확인하세요.")
-    # 새로고침 없이 감시할 때는 날짜 선택이 그대로 유지되므로 다시 누르지 않는다
-    if args.reload and args.date:
-        if not click_text(page, args.date):
-            log(f"날짜 '{args.date}' 버튼을 찾지 못했습니다.")
-        settle(page, 1)
+    # 날짜가 하나이고 새로고침하지 않으면 날짜 선택이 그대로 유지되므로 다시 누르지 않는다
+    dates = args.date or [None]
+    click_dates = len(dates) > 1 or args.reload
 
     result, dumps = {}, {}
-    for theater in args.theater:
-        if not click_text(page, theater):
-            log(f"극장 '{theater}' 버튼을 찾지 못했습니다. 화면에 극장 즐겨찾기가 되어 있는지 확인하세요.")
-            continue
-        settle(page, args.settle, idle_timeout=3)
-        text = page_text(page)
-        dumps[theater] = text
-        times = start_times(text)
-        result[theater] = [t for t in times if args.start <= to_minutes(t) <= args.end]
+    for date in dates:
+        if date and click_dates:
+            if not click_text(page, date):
+                # 날짜를 못 눌렀으면 다른 날짜 시간표를 이 날짜로 착각하지 않도록 이번 바퀴는 건너뛴다
+                log(f"날짜 '{date}' 버튼을 찾지 못했습니다.")
+                continue
+            settle(page, 0.5, idle_timeout=2)
+        for theater in args.theater:
+            label = f"{date}일 {theater}" if len(dates) > 1 else theater
+            args.targets[label] = (date, theater)
+            if not click_text(page, theater):
+                log(f"극장 '{theater}' 버튼을 찾지 못했습니다. 화면에 극장 즐겨찾기가 되어 있는지 확인하세요.")
+                continue
+            settle(page, args.settle, idle_timeout=3)
+            text = page_text(page)
+            dumps[label] = text
+            times = start_times(text)
+            result[label] = [t for t in times if args.start <= to_minutes(t) <= args.end]
     return result, dumps
 
 
@@ -198,7 +210,8 @@ def parse_args():
     p.add_argument("--theater", action="append",
                    help="확인할 극장 버튼 이름 (화면에 보이는 그대로). 여러 번 지정")
     p.add_argument("--movie", help="화면에 이 글자가 있는지 확인 (선택이 풀렸는지 점검용)")
-    p.add_argument("--date", help="매번 누를 날짜 버튼의 숫자 (예: 30)")
+    p.add_argument("--date", action="append",
+                   help="확인할 날짜 버튼 (예: 30). 여러 번 지정하면 날짜마다 번갈아 확인")
     p.add_argument("--from", dest="start_s", default="00:00", help="회차 시작 시각 하한 (예: 06:00)")
     p.add_argument("--to", dest="end_s", default="23:59", help="회차 시작 시각 상한 (예: 12:00)")
     p.add_argument("--interval", type=float, default=120, help="한 바퀴 끝난 뒤 쉬는 시간(초). 0이면 바로 다음 바퀴")
@@ -225,6 +238,7 @@ def parse_args():
     if not args.url or not args.theater:
         p.error("--url 과 --theater 가 필요합니다")
     args.start, args.end = to_minutes(args.start_s), to_minutes(args.end_s)
+    args.targets = {}  # 결과 이름 -> (날짜, 극장)
     if args.setup:
         args.headed, args.reload = True, False
     args.interval = max(args.interval, MIN_INTERVAL)
@@ -265,8 +279,8 @@ def main():
                 with open("page_dump.txt", "w", encoding="utf-8") as f:
                     for theater, text in dumps.items():
                         f.write(f"===== {theater} =====\n{text}\n\n")
-                for theater in args.theater:
-                    log(f"{theater}: {result.get(theater, '버튼 못 찾음')}")
+                for label in args.targets:
+                    log(f"{label}: {result.get(label, '버튼 못 찾음')}")
                 log("page_dump.txt 저장 완료. 극장별로 상영시각이 제대로 보이는지 확인하세요.")
                 return
 
