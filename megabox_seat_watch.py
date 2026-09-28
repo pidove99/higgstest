@@ -27,14 +27,14 @@ from playwright.sync_api import sync_playwright
 TARGET_TIME = "09:40"          # 상영 시작 시간
 TARGET_BRANCH = "인천논현"      # 극장명 (시간표 오른쪽에 표시되는 이름)
 TARGET_DATE_DAY = "30"         # 날짜 탭의 일(day) 숫자
-OTHER_DATE_DAY = "1"           # 새로고침용으로 잠깐 눌렀다 돌아올 다른 날짜
+OTHER_DATE_DAYS = ["1", "2", "3"]  # 새로고침용으로 잠깐 눌렀다 돌아올 날짜 후보(앞에서부터 시도)
 MIN_SEATS = 3                  # 이 이상 남으면 알람
 INTERVAL_SEC = (20, 35)        # 새로고침 간격(랜덤) - 너무 짧게 하지 말 것
 PROFILE_DIR = "./megabox_profile"  # 로그인 유지용
 URL = "https://www.megabox.co.kr/booking"
 # ================
 
-VERSION = "v4 (날짜 새로고침 수정판)"
+VERSION = "v5 (날짜 클릭 보강판)"
 SEAT_RE = re.compile(r"(\d+)\s*/\s*(\d+)")
 
 
@@ -86,17 +86,50 @@ def find_target(page):
     return None, None
 
 
+def _try_click(el):
+    """일반 클릭 → 실패 시 JS 클릭 (위에 '2026.10' 같은 글자가 겹쳐 있어도 버튼 자체를 누르도록)"""
+    for how in ("normal", "js"):
+        try:
+            if how == "normal":
+                el.click(timeout=2000)
+            else:
+                el.evaluate("e => e.click()")
+            return True
+        except Exception:
+            pass
+    return False
+
+
+DATE_SEP = r"\s*[·•∙・ㆍ\.]?\s*[월화수목금토일]"
+
+
 def click_date(page, day: str):
-    """상단 날짜 탭 클릭 ('30·수' 같은 버튼)"""
-    pat = re.compile(rf"(?<!\d){day}\s*[·•\.]?\s*[월화수목금토일]")
+    """상단 날짜 탭 클릭 ('30·수', '1·목' 같은 버튼)"""
+    loose = re.compile(rf"{day}{DATE_SEP}")
+    strict = re.compile(rf"(?<!\d){day}{DATE_SEP}")
     for frame in all_frames(page):
         try:
-            btn = frame.locator("button, a").filter(has_text=pat)
-            if btn.count():
-                btn.first.click(timeout=3000)
-                return True
+            btns = frame.locator("button, a").filter(has_text=loose)
+            n = btns.count()
         except Exception:
             continue
+        cands = []
+        for i in range(n):
+            el = btns.nth(i)
+            try:
+                txt = el.inner_text(timeout=1000)
+                vis = el.is_visible()
+            except Exception:
+                continue
+            # '2026.09' 같은 월 표시는 빼고 날짜 숫자만 비교 (30 vs 3 구분)
+            core = re.sub(r"\d{4}\.\d{1,2}", " ", txt)
+            if len(txt) > 20 or not strict.search(core):
+                continue
+            cands.append((not vis, len(txt), i))
+        # 화면에 보이는 것, 텍스트 짧은(=날짜 버튼 자체) 것부터
+        for _, _, i in sorted(cands):
+            if _try_click(btns.nth(i)):
+                return True
     return False
 
 
@@ -110,13 +143,17 @@ def settle(page, ms):
 
 def refresh(page):
     """다른 날짜(목) 눌렀다가 원래 날짜(수)로 돌아와서 시간표 새로 불러오기"""
-    ok1 = click_date(page, OTHER_DATE_DAY)
+    ok1 = False
+    for d in OTHER_DATE_DAYS:
+        if click_date(page, d):
+            ok1 = d
+            break
     if ok1:
         settle(page, 1500)
     ok2 = click_date(page, TARGET_DATE_DAY)
     settle(page, 2500)
     if not (ok1 and ok2):
-        print(f"  ⚠ 날짜 버튼 클릭 실패 ({OTHER_DATE_DAY}일:{'O' if ok1 else 'X'}, "
+        print(f"  ⚠ 날짜 버튼 클릭 실패 (다른 날짜:{ok1 + '일 O' if ok1 else 'X'}, "
               f"{TARGET_DATE_DAY}일:{'O' if ok2 else 'X'}) → 시간표가 갱신 안 됐을 수 있음")
 
 
@@ -127,8 +164,7 @@ def confirm_popups(page, tries=5):
         for frame in all_frames(page):
             try:
                 btn = frame.locator("button:visible", has_text=re.compile(r"^\s*확인\s*$"))
-                if btn.count():
-                    btn.first.click(timeout=3000)
+                if btn.count() and _try_click(btn.first):
                     clicked = True
                     page.wait_for_timeout(800)
             except Exception:
@@ -145,7 +181,12 @@ def enter_seat_page(page, retries=3):
             page.wait_for_timeout(1000)
             continue
         try:
-            el.click(timeout=3000)
+            # li를 잡았으면 그 안의 실제 버튼/링크를 누른다
+            inner = el.locator("button, a").filter(has_text=TARGET_TIME)
+            if inner.count():
+                el = inner.first
+            if not _try_click(el):
+                raise RuntimeError("회차 클릭 실패")
             page.wait_for_timeout(1000)
             confirm_popups(page)
             return True
