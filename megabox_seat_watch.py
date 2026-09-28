@@ -34,6 +34,7 @@ PROFILE_DIR = "./megabox_profile"  # 로그인 유지용
 URL = "https://www.megabox.co.kr/booking"
 # ================
 
+VERSION = "v3 (iframe 수정판)"
 SEAT_RE = re.compile(r"(\d+)\s*/\s*(\d+)")
 
 
@@ -172,6 +173,7 @@ def parse_args():
 
 
 def main():
+    print("메가박스 좌석 감시", VERSION)
     parse_args()
     with sync_playwright() as p:
         ctx = p.chromium.launch_persistent_context(
