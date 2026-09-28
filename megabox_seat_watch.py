@@ -34,7 +34,7 @@ PROFILE_DIR = "./megabox_profile"  # 로그인 유지용
 URL = "https://www.megabox.co.kr/booking"
 # ================
 
-VERSION = "v3 (iframe 수정판)"
+VERSION = "v4 (날짜 새로고침 수정판)"
 SEAT_RE = re.compile(r"(\d+)\s*/\s*(\d+)")
 
 
@@ -88,7 +88,7 @@ def find_target(page):
 
 def click_date(page, day: str):
     """상단 날짜 탭 클릭 ('30·수' 같은 버튼)"""
-    pat = re.compile(rf"^\s*{day}\s*[·•\.]?\s*[월화수목금토일]")
+    pat = re.compile(rf"(?<!\d){day}\s*[·•\.]?\s*[월화수목금토일]")
     for frame in all_frames(page):
         try:
             btn = frame.locator("button, a").filter(has_text=pat)
@@ -109,10 +109,15 @@ def settle(page, ms):
 
 
 def refresh(page):
-    if click_date(page, OTHER_DATE_DAY):
+    """다른 날짜(목) 눌렀다가 원래 날짜(수)로 돌아와서 시간표 새로 불러오기"""
+    ok1 = click_date(page, OTHER_DATE_DAY)
+    if ok1:
         settle(page, 1500)
-    click_date(page, TARGET_DATE_DAY)
+    ok2 = click_date(page, TARGET_DATE_DAY)
     settle(page, 2500)
+    if not (ok1 and ok2):
+        print(f"  ⚠ 날짜 버튼 클릭 실패 ({OTHER_DATE_DAY}일:{'O' if ok1 else 'X'}, "
+              f"{TARGET_DATE_DAY}일:{'O' if ok2 else 'X'}) → 시간표가 갱신 안 됐을 수 있음")
 
 
 def confirm_popups(page, tries=5):
