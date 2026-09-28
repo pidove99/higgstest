@@ -52,28 +52,30 @@ def alarm(msg: str):
 
 
 def all_frames(page):
-    return [page.main_frame, *page.main_frame.child_frames] + [
-        f for c in page.main_frame.child_frames for f in c.child_frames
-    ]
+    """현재 살아있는(detach 안 된) 프레임 전부. 메가박스 예매창은 iframe이 새로 로드되므로 매번 다시 구한다."""
+    return [f for f in page.frames if not f.is_detached()]
 
 
 def find_target(page):
-    """시간표에서 대상 회차 요소와 잔여석 수를 찾는다. (locator, 잔여석 or None(매진))"""
+    """시간표에서 대상 회차 요소와 잔여석 수를 찾는다. (locator, 잔여석 / 0=매진 / None=숫자 못 읽음)"""
     for frame in all_frames(page):
-        items = frame.locator("li, button, a").filter(has_text=TARGET_TIME).filter(
-            has_text=TARGET_BRANCH
-        )
-        n = items.count()
-        # 가장 안쪽(텍스트가 짧은) 요소를 고른다
-        best, best_len = None, 10**9
-        for i in range(n):
-            el = items.nth(i)
-            try:
-                txt = el.inner_text(timeout=1000)
-            except Exception:
-                continue
-            if len(txt) < best_len:
-                best, best_len = (el, txt), len(txt)
+        try:
+            items = frame.locator("li, button, a").filter(has_text=TARGET_TIME).filter(
+                has_text=TARGET_BRANCH
+            )
+            n = items.count()
+            # 가장 안쪽(텍스트가 짧은) 요소를 고른다
+            best, best_len = None, 10**9
+            for i in range(n):
+                el = items.nth(i)
+                try:
+                    txt = el.inner_text(timeout=1000)
+                except Exception:
+                    continue
+                if len(txt) < best_len:
+                    best, best_len = (el, txt), len(txt)
+        except Exception:
+            continue  # 프레임이 중간에 새로 로드됨 → 다음 프레임
         if best:
             el, txt = best
             if "매진" in txt:
@@ -87,18 +89,29 @@ def click_date(page, day: str):
     """상단 날짜 탭 클릭 ('30·수' 같은 버튼)"""
     pat = re.compile(rf"^\s*{day}\s*[·•\.]?\s*[월화수목금토일]")
     for frame in all_frames(page):
-        btn = frame.locator("button, a").filter(has_text=pat)
-        if btn.count():
-            btn.first.click()
-            return True
+        try:
+            btn = frame.locator("button, a").filter(has_text=pat)
+            if btn.count():
+                btn.first.click(timeout=3000)
+                return True
+        except Exception:
+            continue
     return False
+
+
+def settle(page, ms):
+    page.wait_for_timeout(ms)
+    try:
+        page.wait_for_load_state("networkidle", timeout=5000)
+    except Exception:
+        pass
 
 
 def refresh(page):
     if click_date(page, OTHER_DATE_DAY):
-        page.wait_for_timeout(1500)
+        settle(page, 1500)
     click_date(page, TARGET_DATE_DAY)
-    page.wait_for_timeout(2500)
+    settle(page, 2500)
 
 
 def confirm_popups(page, tries=5):
@@ -106,13 +119,34 @@ def confirm_popups(page, tries=5):
     for _ in range(tries):
         clicked = False
         for frame in all_frames(page):
-            btn = frame.locator("button:visible", has_text=re.compile(r"^\s*확인\s*$"))
-            if btn.count():
-                btn.first.click()
-                clicked = True
-                page.wait_for_timeout(800)
+            try:
+                btn = frame.locator("button:visible", has_text=re.compile(r"^\s*확인\s*$"))
+                if btn.count():
+                    btn.first.click(timeout=3000)
+                    clicked = True
+                    page.wait_for_timeout(800)
+            except Exception:
+                continue
         if not clicked:
             break
+
+
+def enter_seat_page(page, retries=3):
+    """대상 회차 클릭 → 팝업 확인. 프레임이 바뀌어도 다시 찾아서 재시도."""
+    for _ in range(retries):
+        el, _ = find_target(page)
+        if el is None:
+            page.wait_for_timeout(1000)
+            continue
+        try:
+            el.click(timeout=3000)
+            page.wait_for_timeout(1000)
+            confirm_popups(page)
+            return True
+        except Exception as e:
+            print("클릭 재시도:", e)
+            page.wait_for_timeout(1000)
+    return False
 
 
 def parse_args():
@@ -149,6 +183,7 @@ def main():
 
         while True:
             try:
+                page = ctx.pages[-1]  # 사용자가 새 탭에서 예매창을 열었을 수도 있음
                 refresh(page)
                 el, seats = find_target(page)
                 now = time.strftime("%H:%M:%S")
@@ -159,9 +194,7 @@ def main():
                           f"{'매진' if seats == 0 else seats}")
                     if seats is not None and seats >= MIN_SEATS:
                         page.bring_to_front()
-                        el.click()
-                        page.wait_for_timeout(1000)
-                        confirm_popups(page)
+                        enter_seat_page(page)
                         alarm(f"잔여 {seats}석! 좌석선택 화면으로 이동했습니다. 빨리 고르세요!")
                         input("완료되면 Enter로 종료 ▶ ")
                         break
