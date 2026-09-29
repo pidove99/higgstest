@@ -8,6 +8,8 @@
   python megabox_seat_watch.py --test   # 테스트: 1석만 남아도 바로 좌석창 진입
   python megabox_seat_watch.py --target 09:40 인천논현 3 --target 10:00 송도 1
       # 감시 대상 직접 지정 (시간 극장 최소좌석), 여러 개 가능
+  python megabox_seat_watch.py --soldout 송도 --fast
+      # 송도 매진 회차 중 1석이라도 풀리면 알림, 최대한 빠르게 새로고침
   python megabox_seat_watch.py --open 3 목동
       # 3일(토) 목동 시간표가 열리면 알림 (--open-time 10:00 추가 시 그 회차 좌석창 자동 진입)
 
@@ -35,12 +37,14 @@ TARGETS = [
 MOVIE = "치이카와"             # 영화 제목 일부 (이 영화 회차만 봄)
 TARGET_DATE_DAY = "30"         # 날짜 탭의 일(day) 숫자
 OTHER_DATE_DAYS = ["1", "2", "3", "4", "29"]  # 새로고침용으로 잠깐 눌렀다 돌아올 날짜 후보(앞에서부터 시도)
-INTERVAL_SEC = (20, 35)        # 새로고침 간격(랜덤) - 너무 짧게 하지 말 것
+INTERVAL_SEC = (20, 35)        # 새로고침 간격(랜덤) - --fast 로 최소화 가능
+FAST = False                   # --fast: 대기시간 최소화
 PROFILE_DIR = "./megabox_profile"  # 로그인 유지용
 URL = "https://www.megabox.co.kr/booking"
 # ================
 
-VERSION = "v9 (치이카와 회차만)"
+VERSION = "v10 (매진 풀림 감시 + 빠른 새로고침)"
+SOLDOUT_WATCH = None  # --soldout 극장
 OPEN_WATCH = None  # (일, 극장, 자동진입 시간 or None) - --open 으로 설정
 SEAT_RE = re.compile(r"(\d+)\s*/\s*(\d+)")
 
@@ -188,6 +192,9 @@ def list_showtimes(page, branch):
 
 
 def settle(page, ms):
+    if FAST:
+        page.wait_for_timeout(min(ms, 900))
+        return
     page.wait_for_timeout(ms)
     try:
         page.wait_for_load_state("networkidle", timeout=5000)
@@ -254,6 +261,53 @@ def enter_seat_page(page, t_time, t_branch, retries=3):
     return False
 
 
+def seats_of(txt, branch):
+    """회차 텍스트에서 잔여석 (매진=0, 못 읽으면 None)"""
+    if "매진" in txt:
+        return 0
+    m = SEAT_RE.search(txt.split(branch, 1)[-1]) or SEAT_RE.search(txt)
+    return int(m.group(1)) if m else None
+
+
+def soldout_status(page, branch):
+    """{시간: 잔여석} - 해당 극장 회차 전체"""
+    return {t: seats_of(txt, branch) for t, txt in list_showtimes(page, branch)}
+
+
+SOLDOUT_SEEN = set()
+
+
+def watch_soldout_once(page):
+    """극장의 매진 회차 중 하나라도 풀리면 True (좌석창 진입 + 알람)"""
+    branch = SOLDOUT_WATCH
+    refresh(page)
+    st = soldout_status(page, branch)
+    now = time.strftime("%H:%M:%S")
+    if not st:
+        print(f"[{now}] {TARGET_DATE_DAY}일 {branch} 회차를 못 찾음 (선택 상태 확인)")
+        return False
+    SOLDOUT_SEEN.update(t for t, n in st.items() if n == 0)
+    freed = [t for t in sorted(SOLDOUT_SEEN) if (st.get(t) or 0) > 0]
+    line = " | ".join(f"{t} {'매진' if n == 0 else n}" for t, n in sorted(st.items()))
+    print(f"[{now}] {branch}: {line}")
+    if not SOLDOUT_SEEN:
+        print("  (지금 매진 회차가 없음 - 매진되는 회차가 생기면 그때부터 감시)")
+    if not freed:
+        return False
+    # 화면이 덜 바뀐 상태를 잘못 읽은 게 아닌지 한 번 더 확인
+    page.wait_for_timeout(1200)
+    st2 = soldout_status(page, branch)
+    freed = [t for t in freed if (st2.get(t) or 0) > 0]
+    if not freed:
+        return False
+    t = freed[0]
+    page.bring_to_front()
+    enter_seat_page(page, t, branch)
+    alarm(f"{branch} {t} 매진 풀림! 잔여 {st2[t]}석 - 좌석선택 화면으로 이동했습니다. 빨리 고르세요!")
+    input("완료되면 Enter로 종료 ▶ ")
+    return True
+
+
 def check_open(page, day, branch):
     """day일 시간표가 열렸는지. (열림여부, 회차목록, 날짜버튼 비활성여부)
     날짜 버튼이 비활성이면 눌러도 이전 날짜 시간표가 그대로 남으므로,
@@ -267,7 +321,7 @@ def check_open(page, day, branch):
 
 
 def parse_args():
-    global TARGETS, OPEN_WATCH, MOVIE
+    global TARGETS, OPEN_WATCH, MOVIE, SOLDOUT_WATCH, TARGET_DATE_DAY, INTERVAL_SEC, FAST
     import argparse
     ap = argparse.ArgumentParser()
     ap.add_argument("--test", action="store_true",
@@ -279,10 +333,23 @@ def parse_args():
     ap.add_argument("--open-time", metavar="시간",
                     help="--open과 같이 쓰면, 열렸을 때 이 회차로 바로 좌석창 진입 (예: 10:00)")
     ap.add_argument("--movie", help=f"영화 제목 일부 (기본: {MOVIE})")
+    ap.add_argument("--soldout", metavar="극장",
+                    help="극장의 매진 회차 전체 감시 - 한 자리라도 풀리면 알림 (예: --soldout 송도)")
+    ap.add_argument("--day", help=f"감시할 날짜의 일 (기본: {TARGET_DATE_DAY})")
+    ap.add_argument("--fast", action="store_true", help="최대한 빠르게 새로고침 (약 2~4초 간격)")
     a = ap.parse_args()
     if a.movie:
         MOVIE = a.movie
-    print(f"영화: {MOVIE}")
+    if a.day:
+        TARGET_DATE_DAY = a.day
+    if a.fast:
+        FAST = True
+        INTERVAL_SEC = (1.5, 3.0)
+    print(f"영화: {MOVIE} / 날짜: {TARGET_DATE_DAY}일" + (" / ⚡빠른 새로고침" if FAST else ""))
+    if a.soldout:
+        SOLDOUT_WATCH = a.soldout
+        print(f"[매진 풀림 감시] {TARGET_DATE_DAY}일 {a.soldout} 매진 회차 중 1석이라도 풀리면 알림")
+        return
     if a.open:
         OPEN_WATCH = (a.open[0], a.open[1], a.open_time)
         print(f"[시간표 오픈 감시] {a.open[0]}일 {a.open[1]} 회차가 열리면 알림"
@@ -331,6 +398,11 @@ def main():
         while True:
             try:
                 page = ctx.pages[-1]  # 사용자가 새 탭에서 예매창을 열었을 수도 있음
+                if SOLDOUT_WATCH:
+                    if watch_soldout_once(page):
+                        break
+                    time.sleep(random.uniform(*INTERVAL_SEC))
+                    continue
                 if OPEN_WATCH:
                     if watch_open_once(page):
                         break
