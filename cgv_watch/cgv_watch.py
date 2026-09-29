@@ -62,7 +62,12 @@ def _click_visible(page, label):
             # 같은 글자가 숨은 요소에도 있을 수 있어서, 화면에 보이는 것부터 누른다
             for item in locator.all():
                 if item.is_visible():
-                    item.click(timeout=3_000)
+                    try:
+                        item.click(timeout=3_000)
+                    except Exception:
+                        # 날짜 줄처럼 옆으로 밀리는 슬라이드에서는 버튼이 화면 밖에 있어 일반 클릭이 안 된다.
+                        # 그럴 때는 요소에 직접 클릭 이벤트를 보낸다.
+                        item.evaluate("el => el.click()")
                     return True
         except Exception:
             continue
