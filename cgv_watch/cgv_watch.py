@@ -178,6 +178,99 @@ def check_once(page, args):
     return result, dumps
 
 
+SEAT_STATUS_JS = """(labels) => {
+  // 회차 시각 글자를 가진 보이는 요소를 찾고, 그 요소를 감싼 버튼의 글자/상태를 돌려준다
+  for (const label of labels) {
+    for (const el of document.querySelectorAll("body *")) {
+      const own = [...el.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join("").trim();
+      if (own !== label || !el.getClientRects().length) continue;
+      let box = el;
+      for (let i = 0; i < 4 && box.parentElement; i++) {
+        if (["BUTTON", "A", "LI"].includes(box.tagName)) break;
+        box = box.parentElement;
+      }
+      return {
+        text: box.innerText || "",
+        cls: String(box.className || "") + " " + String(el.className || ""),
+        disabled: !!box.disabled || box.getAttribute("aria-disabled") === "true",
+      };
+    }
+  }
+  return null;
+}"""
+
+
+def seat_status(page, hhmm):
+    """회차 버튼 상태: 'open'(예매 가능), 'soldout'(매진), None(화면에 없음)."""
+    labels = [hhmm] + ([hhmm[1:]] if hhmm.startswith("0") else [])
+    info = page.evaluate(SEAT_STATUS_JS, labels)
+    if info is None:
+        return None, ""
+    text = info["text"]
+    seats = re.search(r"(\d+)\s*석", text)
+    sold = (
+        "매진" in text
+        or info["disabled"]
+        or re.search(r"sold|disabl", info["cls"], re.I) is not None
+        or (seats is not None and int(seats.group(1)) == 0)
+    )
+    detail = " ".join(text.split())
+    return ("soldout" if sold else "open"), detail
+
+
+def watch_seats(page, args):
+    """매진된 회차가 다시 예매 가능해지면 알린다."""
+    dates = args.date or [None]
+    names = ", ".join(f"{th} {'/'.join(ts)}" for th, ts in args.seat_targets.items())
+    log(f"매진 회차 감시 시작: {names} (Ctrl+C로 종료)")
+    last, pending = {}, set()
+    while True:
+        try:
+            for date in dates:
+                if date and len(dates) > 1 and not click_text(page, date):
+                    log(f"날짜 '{date}' 버튼을 찾지 못했습니다.")
+                    continue
+                for theater, times in args.seat_targets.items():
+                    if not click_text(page, theater):
+                        log(f"극장 '{theater}' 버튼을 찾지 못했습니다.")
+                        continue
+                    settle(page, args.settle, idle_timeout=3)
+                    for t in times:
+                        key = (date, theater, t)
+                        name = f"{date + '일 ' if date and len(dates) > 1 else ''}{theater} {t}"
+                        state, detail = seat_status(page, t)
+                        if key not in last:
+                            shown = {"open": "예매 가능", "soldout": "매진", None: "화면에 없음"}[state]
+                            log(f"기준 상태 {name}: {shown} ({detail})")
+                        elif state == "open" and last[key] != "open":
+                            # 화면 전환 중 잘못 읽는 경우를 막기 위해 두 번 연속 '예매 가능'일 때 알린다
+                            if key in pending:
+                                pending.discard(key)
+                                log(f"매진 풀림! {name} ({detail})")
+                                notify("CGV 매진 회차 풀림!", name)
+                                opened = open_showtime(page, args, theater if date is None or len(dates) == 1
+                                                       else f"{date}일 {theater}", t) if args.open_seat else None
+                                beep(5)
+                                if opened is not None:
+                                    hold_window(opened)
+                                    return
+                            else:
+                                pending.add(key)
+                                continue
+                        if state != "open":
+                            pending.discard(key)
+                        last[key] = state
+            log("확인 중 (" + ", ".join(
+                f"{th} {t} {'가능' if last.get((d, th, t)) == 'open' else '매진' if last.get((d, th, t)) == 'soldout' else '?'}"
+                for d in dates for th, ts in args.seat_targets.items() for t in ts) + ")")
+        except PlaywrightTimeout:
+            log("페이지 로딩 시간 초과, 다음 바퀴에 재시도")
+        except Exception as e:
+            log(f"오류: {e!r}, 다음 바퀴에 재시도")
+        if args.interval > 0:
+            time.sleep(args.interval + random.uniform(0, args.interval * 0.2))
+
+
 def notify(title, message):
     try:
         from plyer import notification
@@ -253,12 +346,23 @@ def parse_args():
                    help="새 회차를 찾으면 감시 중인 창에서 그 회차의 좌석 선택 화면까지 열어 둠 (좌석은 직접 선택)")
     p.add_argument("--test-open", action="store_true",
                    help="지금 있는 가장 빠른 회차로 알림 + 좌석 선택 화면 열기를 시험")
+    p.add_argument("--seat", action="append", default=[],
+                   help="매진 풀림 감시: '극장=시각,시각' (예: 용산아이파크몰=08:20,11:10). 여러 번 지정")
     p.add_argument("--keep", action="store_true", help="발견 후에도 계속 감시 (새로 생긴 회차만 알림)")
     p.add_argument("--no-open", action="store_true", help="발견 시 기본 브라우저로 페이지를 열지 않음")
     p.add_argument("--dump", action="store_true", help="한 번만 확인하고 극장별 화면 텍스트를 page_dump.txt로 저장")
     args = p.parse_args()
     if args.test_alert:
         return args
+    args.seat_targets = {}
+    for spec in args.seat:
+        theater, _, times = spec.partition("=")
+        if not times:
+            p.error(f"--seat 형식이 잘못됐습니다: {spec} (예: 용산아이파크몰=08:20,11:10)")
+        args.seat_targets.setdefault(theater.strip(), []).extend(
+            f"{int(t.split(':')[0]):02d}:{t.split(':')[1]}" for t in times.split(",") if t.strip())
+    if args.seat_targets and not args.theater:
+        args.theater = list(args.seat_targets)
     if not args.url or not args.theater:
         p.error("--url 과 --theater 가 필요합니다")
     args.start, args.end = to_minutes(args.start_s), to_minutes(args.end_s)
@@ -306,6 +410,14 @@ def main():
                 for label in args.targets:
                     log(f"{label}: {result.get(label, '버튼 못 찾음')}")
                 log("page_dump.txt 저장 완료. 극장별로 상영시각이 제대로 보이는지 확인하세요.")
+                return
+
+            if args.seat_targets:
+                for date in (args.date or [None]):
+                    for theater in args.seat_targets:
+                        label = f"{date}일 {theater}" if args.date and len(args.date) > 1 else theater
+                        args.targets[label] = (date, theater)
+                watch_seats(page, args)
                 return
 
             if args.test_open:
