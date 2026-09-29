@@ -60,9 +60,11 @@ def click_text(page, label):
         page.get_by_text(label, exact=True),
     ):
         try:
-            if locator.count() > 0:
-                locator.first.click(timeout=5_000)
-                return True
+            # 같은 글자가 숨은 요소에도 있을 수 있어서, 화면에 보이는 것부터 누른다
+            for item in locator.all():
+                if item.is_visible():
+                    item.click(timeout=5_000)
+                    return True
         except Exception:
             continue
     return False
