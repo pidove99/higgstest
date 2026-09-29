@@ -52,8 +52,7 @@ def start_times(text):
     return sorted(set(found))
 
 
-def click_text(page, label):
-    """버튼/칩을 보이는 글자 그대로 찾아 누른다."""
+def _click_visible(page, label):
     for locator in (
         page.get_by_role("button", name=label, exact=True),
         page.get_by_role("tab", name=label, exact=True),
@@ -63,11 +62,29 @@ def click_text(page, label):
             # 같은 글자가 숨은 요소에도 있을 수 있어서, 화면에 보이는 것부터 누른다
             for item in locator.all():
                 if item.is_visible():
-                    item.click(timeout=5_000)
+                    item.click(timeout=3_000)
                     return True
         except Exception:
             continue
     return False
+
+
+def click_text(page, label):
+    """버튼/칩을 보이는 글자 그대로 찾아 누른다."""
+    if _click_visible(page, label):
+        return True
+    # 안내 팝업(예: 상영 일정 없음)이 버튼을 가리고 있을 수 있어 닫고 한 번 더 시도한다
+    page.keyboard.press("Escape")
+    for text in ("확인", "닫기"):
+        try:
+            btn = page.get_by_role("button", name=text, exact=True)
+            if btn.count() and btn.first.is_visible():
+                btn.first.click(timeout=2_000)
+                break
+        except Exception:
+            pass
+    page.wait_for_timeout(300)
+    return _click_visible(page, label)
 
 
 def open_showtime(page, args, label, hhmm):
