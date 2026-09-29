@@ -8,6 +8,8 @@
   python megabox_seat_watch.py --test   # 테스트: 1석만 남아도 바로 좌석창 진입
   python megabox_seat_watch.py --target 09:40 인천논현 3 --target 10:00 송도 1
       # 감시 대상 직접 지정 (시간 극장 최소좌석), 여러 개 가능
+  python megabox_seat_watch.py --open 3 목동
+      # 3일(토) 목동 시간표가 열리면 알림 (--open-time 10:00 추가 시 그 회차 좌석창 자동 진입)
 
 1) 브라우저가 뜨면 로그인 → 빠른예매에서 날짜/영화/극장을 평소처럼 선택해 두기
    (스크린샷처럼 시간표에 대상 회차가 보이는 상태)
@@ -31,13 +33,14 @@ TARGETS = [
     ("10:00", "송도", 1),   # 지금 매진 → 한 자리라도 풀리면
 ]
 TARGET_DATE_DAY = "30"         # 날짜 탭의 일(day) 숫자
-OTHER_DATE_DAYS = ["1", "2", "3"]  # 새로고침용으로 잠깐 눌렀다 돌아올 날짜 후보(앞에서부터 시도)
+OTHER_DATE_DAYS = ["1", "2", "3", "4", "29"]  # 새로고침용으로 잠깐 눌렀다 돌아올 날짜 후보(앞에서부터 시도)
 INTERVAL_SEC = (20, 35)        # 새로고침 간격(랜덤) - 너무 짧게 하지 말 것
 PROFILE_DIR = "./megabox_profile"  # 로그인 유지용
 URL = "https://www.megabox.co.kr/booking"
 # ================
 
-VERSION = "v7 (송도 10:00 감시)"
+VERSION = "v8 (시간표 오픈 감시 추가)"
+OPEN_WATCH = None  # (일, 극장, 자동진입 시간 or None) - --open 으로 설정
 SEAT_RE = re.compile(r"(\d+)\s*/\s*(\d+)")
 
 
@@ -106,10 +109,11 @@ def _try_click(el):
 DATE_SEP = r"\s*[·•∙・ㆍ\.]?\s*[월화수목금토일]"
 
 
-def click_date(page, day: str):
-    """상단 날짜 탭 클릭 ('30·수', '1·목' 같은 버튼)"""
+def _date_buttons(page, day: str):
+    """상단 날짜 탭 버튼들('30·수', '3·토' 같은) - 보이는 것/짧은 것 우선 정렬"""
     loose = re.compile(rf"{day}{DATE_SEP}")
     strict = re.compile(rf"(?<!\d){day}{DATE_SEP}")
+    out = []
     for frame in all_frames(page):
         try:
             btns = frame.locator("button, a").filter(has_text=loose)
@@ -129,11 +133,56 @@ def click_date(page, day: str):
             if len(txt) > 20 or not strict.search(core):
                 continue
             cands.append((not vis, len(txt), i))
-        # 화면에 보이는 것, 텍스트 짧은(=날짜 버튼 자체) 것부터
-        for _, _, i in sorted(cands):
-            if _try_click(btns.nth(i)):
-                return True
+        out += [btns.nth(i) for _, _, i in sorted(cands)]
+    return out
+
+
+def click_date(page, day: str):
+    """상단 날짜 탭 클릭"""
+    for el in _date_buttons(page, day):
+        if _try_click(el):
+            return True
     return False
+
+
+def date_disabled(page, day: str):
+    """날짜 버튼이 비활성(회색, 아직 예매 안 열림)인지. 못 찾으면 None"""
+    btns = _date_buttons(page, day)
+    if not btns:
+        return None
+    try:
+        return bool(btns[0].evaluate(
+            "e => e.disabled || e.getAttribute('aria-disabled') === 'true'"
+            " || /disabled|dim/i.test(e.className) || !!e.closest('.disabled, [disabled]')"))
+    except Exception:
+        return None
+
+
+TIME_RE = re.compile(r"(?<!\d)(\d{1,2}:\d{2})(?!\d)")
+
+
+def list_showtimes(page, branch):
+    """시간표에서 해당 극장의 회차 목록 [(시작시간, 텍스트)]"""
+    found = {}
+    for frame in all_frames(page):
+        try:
+            items = frame.locator("li, button, a").filter(has_text=branch).filter(has_text=TIME_RE)
+            n = items.count()
+            for i in range(n):
+                try:
+                    txt = items.nth(i).inner_text(timeout=1000)
+                except Exception:
+                    continue
+                times = TIME_RE.findall(txt)
+                # 회차 하나짜리 요소만 (시작시간 + 종료시간 '~11:29' 정도)
+                if not times or len(set(times)) > 2:
+                    continue
+                t = times[0]
+                if t not in found or len(txt) < len(found[t]):
+                    found[t] = txt
+        except Exception:
+            continue
+    return sorted(found.items())
 
 
 def settle(page, ms):
@@ -144,20 +193,24 @@ def settle(page, ms):
         pass
 
 
-def refresh(page):
-    """다른 날짜(목) 눌렀다가 원래 날짜(수)로 돌아와서 시간표 새로 불러오기"""
+def refresh(page, day=None, on_other=None):
+    """다른 날짜 눌렀다가 원래 날짜로 돌아와서 시간표 새로 불러오기"""
+    day = day or TARGET_DATE_DAY
     ok1 = False
-    for d in OTHER_DATE_DAYS:
+    for d in [x for x in OTHER_DATE_DAYS if x != day]:
         if click_date(page, d):
             ok1 = d
             break
     if ok1:
         settle(page, 1500)
-    ok2 = click_date(page, TARGET_DATE_DAY)
+    if on_other:
+        on_other()
+    ok2 = click_date(page, day)
     settle(page, 2500)
     if not (ok1 and ok2):
         print(f"  ⚠ 날짜 버튼 클릭 실패 (다른 날짜:{ok1 + '일 O' if ok1 else 'X'}, "
-              f"{TARGET_DATE_DAY}일:{'O' if ok2 else 'X'}) → 시간표가 갱신 안 됐을 수 있음")
+              f"{day}일:{'O' if ok2 else 'X'}) → 시간표가 갱신 안 됐을 수 있음")
+    return bool(ok1 and ok2)
 
 
 def confirm_popups(page, tries=5):
@@ -199,15 +252,36 @@ def enter_seat_page(page, t_time, t_branch, retries=3):
     return False
 
 
+def check_open(page, day, branch):
+    """day일 시간표가 열렸는지. (열림여부, 회차목록, 날짜버튼 비활성여부)
+    날짜 버튼이 비활성이면 눌러도 이전 날짜 시간표가 그대로 남으므로,
+    '다른 날짜' 시간표와 비교해서 실제로 바뀌었을 때만 열린 것으로 본다."""
+    before = []
+    refresh(page, day, on_other=lambda: before.extend(list_showtimes(page, branch)))
+    disabled = date_disabled(page, day)
+    after = list_showtimes(page, branch)
+    opened = bool(after) and not disabled and after != before
+    return opened, after, disabled
+
+
 def parse_args():
-    global TARGETS
+    global TARGETS, OPEN_WATCH
     import argparse
     ap = argparse.ArgumentParser()
     ap.add_argument("--test", action="store_true",
                     help="테스트 모드: 모든 대상 최소좌석을 1로 (잔여 1석 이상이면 바로 좌석창 진입)")
     ap.add_argument("--target", nargs=3, action="append", metavar=("시간", "극장", "최소좌석"),
                     help="감시 대상 (예: --target 10:00 송도 1). 여러 번 쓸 수 있음")
+    ap.add_argument("--open", nargs=2, metavar=("일", "극장"),
+                    help="시간표 오픈 감시 (예: --open 3 목동 → 3일(토) 목동 회차가 열리면 알림)")
+    ap.add_argument("--open-time", metavar="시간",
+                    help="--open과 같이 쓰면, 열렸을 때 이 회차로 바로 좌석창 진입 (예: 10:00)")
     a = ap.parse_args()
+    if a.open:
+        OPEN_WATCH = (a.open[0], a.open[1], a.open_time)
+        print(f"[시간표 오픈 감시] {a.open[0]}일 {a.open[1]} 회차가 열리면 알림"
+              + (f" → {a.open_time} 회차 좌석창 자동 진입" if a.open_time else ""))
+        return
     if a.target:
         TARGETS = [(t, b, int(n)) for t, b, n in a.target]
     if a.test:
@@ -215,6 +289,26 @@ def parse_args():
     print(("[테스트 모드] " if a.test else "") + "감시 대상:")
     for t, b, n in TARGETS:
         print(f"  - {t} {b} : {n}석 이상이면 알림")
+
+
+def watch_open_once(page):
+    day, branch, auto_time = OPEN_WATCH
+    opened, rows, disabled = check_open(page, day, branch)
+    now = time.strftime("%H:%M:%S")
+    if not opened:
+        why = "날짜 비활성" if disabled else ("회차 없음" if not rows else "변화 없음")
+        print(f"[{now}] {day}일 {branch}: 아직 안 열림 ({why})")
+        return False
+    times = ", ".join(t for t, _ in rows)
+    print(f"[{now}] {day}일 {branch} 열림! 회차: {times}")
+    page.bring_to_front()
+    if auto_time and any(t == auto_time for t, _ in rows):
+        enter_seat_page(page, auto_time, branch)
+        alarm(f"{day}일 {branch} 시간표 열림! {auto_time} 좌석선택 화면으로 이동했습니다.")
+    else:
+        alarm(f"{day}일 {branch} 시간표 열림! 회차: {times}")
+    input("완료되면 Enter로 종료 ▶ ")
+    return True
 
 
 def main():
@@ -231,6 +325,11 @@ def main():
         while True:
             try:
                 page = ctx.pages[-1]  # 사용자가 새 탭에서 예매창을 열었을 수도 있음
+                if OPEN_WATCH:
+                    if watch_open_once(page):
+                        break
+                    time.sleep(random.uniform(*INTERVAL_SEC))
+                    continue
                 refresh(page)
                 now = time.strftime("%H:%M:%S")
                 hit = None
