@@ -32,6 +32,7 @@ from playwright.sync_api import sync_playwright
 TARGETS = [
     ("10:00", "송도", 1),   # 지금 매진 → 한 자리라도 풀리면
 ]
+MOVIE = "치이카와"             # 영화 제목 일부 (이 영화 회차만 봄)
 TARGET_DATE_DAY = "30"         # 날짜 탭의 일(day) 숫자
 OTHER_DATE_DAYS = ["1", "2", "3", "4", "29"]  # 새로고침용으로 잠깐 눌렀다 돌아올 날짜 후보(앞에서부터 시도)
 INTERVAL_SEC = (20, 35)        # 새로고침 간격(랜덤) - 너무 짧게 하지 말 것
@@ -39,7 +40,7 @@ PROFILE_DIR = "./megabox_profile"  # 로그인 유지용
 URL = "https://www.megabox.co.kr/booking"
 # ================
 
-VERSION = "v8 (시간표 오픈 감시 추가)"
+VERSION = "v9 (치이카와 회차만)"
 OPEN_WATCH = None  # (일, 극장, 자동진입 시간 or None) - --open 으로 설정
 SEAT_RE = re.compile(r"(\d+)\s*/\s*(\d+)")
 
@@ -69,7 +70,7 @@ def find_target(page, t_time, t_branch):
         try:
             items = frame.locator("li, button, a").filter(has_text=t_time).filter(
                 has_text=t_branch
-            )
+            ).filter(has_text=MOVIE)
             n = items.count()
             # 가장 안쪽(텍스트가 짧은) 요소를 고른다
             best, best_len = None, 10**9
@@ -166,7 +167,8 @@ def list_showtimes(page, branch):
     found = {}
     for frame in all_frames(page):
         try:
-            items = frame.locator("li, button, a").filter(has_text=branch).filter(has_text=TIME_RE)
+            items = frame.locator("li, button, a").filter(has_text=branch).filter(
+                has_text=TIME_RE).filter(has_text=MOVIE)
             n = items.count()
             for i in range(n):
                 try:
@@ -265,7 +267,7 @@ def check_open(page, day, branch):
 
 
 def parse_args():
-    global TARGETS, OPEN_WATCH
+    global TARGETS, OPEN_WATCH, MOVIE
     import argparse
     ap = argparse.ArgumentParser()
     ap.add_argument("--test", action="store_true",
@@ -276,7 +278,11 @@ def parse_args():
                     help="시간표 오픈 감시 (예: --open 3 목동 → 3일(토) 목동 회차가 열리면 알림)")
     ap.add_argument("--open-time", metavar="시간",
                     help="--open과 같이 쓰면, 열렸을 때 이 회차로 바로 좌석창 진입 (예: 10:00)")
+    ap.add_argument("--movie", help=f"영화 제목 일부 (기본: {MOVIE})")
     a = ap.parse_args()
+    if a.movie:
+        MOVIE = a.movie
+    print(f"영화: {MOVIE}")
     if a.open:
         OPEN_WATCH = (a.open[0], a.open[1], a.open_time)
         print(f"[시간표 오픈 감시] {a.open[0]}일 {a.open[1]} 회차가 열리면 알림"
