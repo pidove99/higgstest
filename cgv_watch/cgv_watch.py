@@ -18,6 +18,7 @@ import re
 import subprocess
 import sys
 import time
+import urllib.request
 import webbrowser
 from datetime import datetime
 
@@ -271,7 +272,27 @@ def watch_seats(page, args):
             time.sleep(args.interval + random.uniform(0, args.interval * 0.2))
 
 
+NTFY_TOPIC = None  # --ntfy 로 정하면 휴대폰(ntfy 앱)으로도 알림을 보낸다
+
+
+def push_phone(title, message):
+    """ntfy 로 휴대폰 푸시 알림을 보낸다. 스마트워치도 휴대폰 알림을 그대로 받는다."""
+    if not NTFY_TOPIC:
+        return
+    url = NTFY_TOPIC if NTFY_TOPIC.startswith("http") else f"https://ntfy.sh/{NTFY_TOPIC}"
+    try:
+        req = urllib.request.Request(
+            url,
+            data=f"{title}\n{message}".encode("utf-8"),
+            headers={"Title": "CGV", "Priority": "urgent", "Tags": "rotating_light"},
+        )
+        urllib.request.urlopen(req, timeout=10).read()
+    except Exception as e:
+        log(f"휴대폰 알림 전송 실패: {e!r}")
+
+
 def notify(title, message):
+    push_phone(title, message)
     try:
         from plyer import notification
 
@@ -348,6 +369,7 @@ def parse_args():
                    help="지금 있는 가장 빠른 회차로 알림 + 좌석 선택 화면 열기를 시험")
     p.add_argument("--seat", action="append", default=[],
                    help="매진 풀림 감시: '극장=시각,시각' (예: 용산아이파크몰=08:20,11:10). 여러 번 지정")
+    p.add_argument("--ntfy", help="휴대폰 ntfy 앱에서 구독한 주제 이름. 알림을 휴대폰/스마트워치로도 보냄")
     p.add_argument("--keep", action="store_true", help="발견 후에도 계속 감시 (새로 생긴 회차만 알림)")
     p.add_argument("--no-open", action="store_true", help="발견 시 기본 브라우저로 페이지를 열지 않음")
     p.add_argument("--dump", action="store_true", help="한 번만 확인하고 극장별 화면 텍스트를 page_dump.txt로 저장")
@@ -374,7 +396,9 @@ def parse_args():
 
 
 def main():
+    global NTFY_TOPIC
     args = parse_args()
+    NTFY_TOPIC = args.ntfy
     if args.test_alert:
         # 실제로 회차를 찾았을 때와 똑같이 알린다 (CGV 확인은 하지 않음)
         msg = "여의도 09:30, 10:50 / 홍대 11:20 (테스트)"
