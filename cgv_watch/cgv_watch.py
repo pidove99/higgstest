@@ -155,10 +155,16 @@ def check_once(page, args):
         log(f"화면에서 '{args.movie}'를 찾지 못했습니다. 새로고침하면 영화 선택이 풀리는지 확인하세요.")
     # 날짜가 하나이고 새로고침하지 않으면 날짜 선택이 그대로 유지되므로 다시 누르지 않는다
     dates = args.date or [None]
-    click_dates = len(dates) > 1 or args.reload
+    click_dates = len(dates) > 1 or args.reload or bool(args.refresh_date)
 
     result, dumps = {}, {}
     for date in dates:
+        if args.refresh_date:
+            # 시간표를 확실히 새로 불러오도록 다른 날짜를 먼저 눌렀다가 돌아온다 (그 날짜 결과는 보지 않음)
+            if click_text(page, args.refresh_date):
+                settle(page, 0.5, idle_timeout=2)
+            else:
+                log(f"새로고침용 날짜 '{args.refresh_date}' 버튼을 찾지 못했습니다.")
         if date and click_dates:
             if not click_text(page, date):
                 # 날짜를 못 눌렀으면 다른 날짜 시간표를 이 날짜로 착각하지 않도록 이번 바퀴는 건너뛴다
@@ -350,6 +356,8 @@ def parse_args():
     p.add_argument("--movie", help="화면에 이 글자가 있는지 확인 (선택이 풀렸는지 점검용)")
     p.add_argument("--date", action="append",
                    help="확인할 날짜 버튼 (예: 30). 여러 번 지정하면 날짜마다 번갈아 확인")
+    p.add_argument("--refresh-date",
+                   help="매 바퀴 먼저 눌렀다가 --date 로 돌아올 날짜 버튼 (시간표 새로고침용, 결과는 보지 않음)")
     p.add_argument("--from", dest="start_s", default="00:00", help="회차 시작 시각 하한 (예: 06:00)")
     p.add_argument("--to", dest="end_s", default="23:59", help="회차 시작 시각 상한 (예: 12:00)")
     p.add_argument("--interval", type=float, default=120, help="한 바퀴 끝난 뒤 쉬는 시간(초). 0이면 바로 다음 바퀴")
