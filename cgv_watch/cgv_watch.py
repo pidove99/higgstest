@@ -41,15 +41,21 @@ def to_minutes(hhmm):
     return int(h) * 60 + int(m)
 
 
-def start_times(text):
-    """화면 텍스트에서 회차 시작 시각 목록을 뽑는다. 'HH:MM ~ HH:MM' 형식이면 앞쪽만 쓴다."""
+def start_times(text, exclude=()):
+    """화면 텍스트에서 회차 시작 시각 목록을 뽑는다. 'HH:MM ~ HH:MM' 형식이면 앞쪽만 쓴다.
+
+    exclude 에 든 글자(예: 무대인사)가 그 회차 칸에 적혀 있으면 뺀다.
+    회차 칸은 그 시작 시각부터 다음 회차 시작 시각 바로 앞까지로 본다.
+    """
     if NO_SCHEDULE in text:
         return []
-    pairs = START_END_PATTERN.findall(text)
-    if pairs:
-        found = [f"{int(h):02d}:{m}" for h, m, _, _ in pairs]
-    else:
-        found = [f"{int(h):02d}:{m}" for h, m in TIME_PATTERN.findall(text)]
+    matches = list(START_END_PATTERN.finditer(text)) or list(TIME_PATTERN.finditer(text))
+    found = []
+    for i, m in enumerate(matches):
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        if any(word in text[m.start():end] for word in exclude):
+            continue
+        found.append(f"{int(m.group(1)):02d}:{m.group(2)}")
     return sorted(set(found))
 
 
@@ -180,7 +186,7 @@ def check_once(page, args):
             settle(page, args.settle, idle_timeout=3)
             text = page_text(page)
             dumps[label] = text
-            times = start_times(text)
+            times = start_times(text, args.exclude)
             result[label] = [t for t in times if args.start <= to_minutes(t) <= args.end]
     return result, dumps
 
@@ -358,6 +364,8 @@ def parse_args():
                    help="확인할 날짜 버튼 (예: 30). 여러 번 지정하면 날짜마다 번갈아 확인")
     p.add_argument("--refresh-date",
                    help="매 바퀴 먼저 눌렀다가 --date 로 돌아올 날짜 버튼 (시간표 새로고침용, 결과는 보지 않음)")
+    p.add_argument("--exclude", action="append", default=[],
+                   help="회차 칸에 이 글자가 있으면 무시 (예: 무대인사). 여러 번 지정 가능")
     p.add_argument("--from", dest="start_s", default="00:00", help="회차 시작 시각 하한 (예: 06:00)")
     p.add_argument("--to", dest="end_s", default="23:59", help="회차 시작 시각 상한 (예: 12:00)")
     p.add_argument("--interval", type=float, default=120, help="한 바퀴 끝난 뒤 쉬는 시간(초). 0이면 바로 다음 바퀴")
