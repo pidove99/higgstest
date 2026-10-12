@@ -1,354 +1,399 @@
 <title>MC2LAB 리포좀 비타민C</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+KR:wght@400;600;700&family=Noto+Sans+KR:wght@400;500;700;900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Roboto+Mono:wght@500;700&display=swap">
 <style>
-/* Layout: 와디즈 스토리형 단일 컬럼(최대 720px). 흰 지면 + 실험실 기록지 톤. 주황은 "측정값"에만 쓴다. */
+/* Layout: 와디즈 상세페이지 이미지 규격 — 가로 860px 한 장. 모든 크기는 860px 기준 px값 × --u 로 계산해
+   폰에서도 이미지처럼 비율 그대로 줄어든다. 흰 지면 + 주황 하이라이트/그라데이션 숫자. 의도적으로 라이트 단일 테마. */
 :root {
   --bg: #ffffff;
-  --paper: #f6f4f1;
-  --fg: #1b1a19;
-  --muted: #6f6a64;
-  --line: #e2ddd6;
-  --accent: #f26a1b;
-  --accent-soft: #fff1e8;
-  --ink: #17161a;
-  --ink-fg: #f4f1ec;
-  --ink-muted: #a39d95;
-  --ink-line: #34323a;
-  --ph: #ece8e2;
-  --ph-stripe: #e4dfd8;
-  --font-display: "IBM Plex Sans KR", "Noto Sans KR", system-ui, sans-serif;
-  --font-body: "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --fg: #1d1d1f;
+  --sub: #55524e;
+  --muted: #8c8781;
+  --line: #e8e3dd;
+  --orange: #ff7a1a;
+  --orange-deep: #f05a00;
+  --orange-hl: #ffa66b;
+  --orange-tint: #fff1e6;
+  --orange-tint-2: #ffd9bd;
+  --card: #ffffff;
+  --ph: #f1eeea;
+  --ph-stripe: #e9e5e0;
+  --ink: #1b1a1c;
+  --ink-fg: #ffffff;
+  --ink-sub: #b5afa8;
+  --font: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --mono: "Roboto Mono", ui-monospace, Menlo, monospace;
+  color-scheme: light;
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #121113; --paper: #1b1a1d; --fg: #eeebe6; --muted: #a39d95; --line: #2e2c31;
-    --accent: #ff8340; --accent-soft: #2b1a10; --ink: #0a0a0b; --ink-fg: #f4f1ec; --ink-muted: #9a948c; --ink-line: #2a2930;
-    --ph: #1f1e22; --ph-stripe: #242328; color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #121113; --paper: #1b1a1d; --fg: #eeebe6; --muted: #a39d95; --line: #2e2c31;
-  --accent: #ff8340; --accent-soft: #2b1a10; --ink: #0a0a0b; --ink-fg: #f4f1ec; --ink-muted: #9a948c; --ink-line: #2a2930;
-  --ph: #1f1e22; --ph-stripe: #242328; color-scheme: dark;
-}
-
 * { box-sizing: border-box; }
-body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 17px; line-height: 1.75; word-break: keep-all; overflow-wrap: break-word; }
-.page { max-width: 720px; margin: 0 auto; background: var(--bg); }
-section { padding: 88px 24px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 28px; }
-section.paper { background: var(--paper); }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); word-break: keep-all; overflow-wrap: break-word; }
+.page { max-width: 860px; margin: 0 auto; background: var(--bg); container-type: inline-size; overflow: hidden; }
+.page * { --u: calc(100cqw / 860); }
+
+section {
+  padding: calc(140 * var(--u)) calc(56 * var(--u));
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  gap: calc(48 * var(--u));
+}
+section.tint { background: linear-gradient(180deg, #ffffff 0%, var(--orange-tint) 45%, var(--orange-tint-2) 100%); }
+section.tint-soft { background: var(--orange-tint); }
+section.orange { background: linear-gradient(180deg, #ff9a4d 0%, var(--orange) 100%); color: #fff; }
 section.ink { background: var(--ink); color: var(--ink-fg); }
-section.ink .muted { color: var(--ink-muted); }
+section.ink .sub { color: var(--ink-sub); }
+section.tight { padding-block: calc(90 * var(--u)); }
 
-h1, h2, h3 { font-family: var(--font-display); margin: 0; text-wrap: balance; letter-spacing: -0.02em; }
-h1 { font-size: clamp(34px, 8vw, 52px); line-height: 1.25; font-weight: 700; }
-h2 { font-size: clamp(25px, 5.6vw, 34px); line-height: 1.4; font-weight: 700; }
-h3 { font-size: 20px; line-height: 1.5; font-weight: 600; }
-p { margin: 0; max-width: 34em; }
+/* 타입 스케일 (860px 기준) */
+.t-hero { font-size: calc(76 * var(--u)); font-weight: 900; line-height: 1.28; letter-spacing: -0.04em; }
+.t-h1 { font-size: calc(64 * var(--u)); font-weight: 900; line-height: 1.32; letter-spacing: -0.04em; }
+.t-h2 { font-size: calc(52 * var(--u)); font-weight: 700; line-height: 1.4; letter-spacing: -0.035em; }
+.t-body { font-size: calc(36 * var(--u)); font-weight: 500; line-height: 1.6; letter-spacing: -0.03em; }
+.t-small { font-size: calc(28 * var(--u)); line-height: 1.6; letter-spacing: -0.02em; }
+.t-giant { font-size: calc(190 * var(--u)); font-weight: 900; line-height: 1; letter-spacing: -0.05em; }
+.t-giant small { font-size: 0.42em; letter-spacing: -0.02em; margin-left: calc(6 * var(--u)); }
+.t-big { font-size: calc(110 * var(--u)); font-weight: 900; line-height: 1.05; letter-spacing: -0.05em; }
+.label { font-family: var(--mono); font-size: calc(26 * var(--u)); font-weight: 700; letter-spacing: 0.16em; color: var(--orange); }
+h1, h2, p { margin: 0; text-wrap: balance; }
+.sub { color: var(--sub); }
 .muted { color: var(--muted); }
-.lead { font-size: 19px; line-height: 1.8; }
-.strong { font-weight: 700; }
-.accent { color: var(--accent); }
-.eyebrow { font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
-.stack { display: flex; flex-direction: column; gap: 4px; align-items: center; }
+.b { font-weight: 900; }
+.o { color: var(--orange); }
 
-/* 큰 숫자 */
-.num { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.03em; line-height: 1; }
-.num-xl { font-size: clamp(64px, 17vw, 112px); }
-.num-xl small { font-size: 0.42em; margin-left: 4px; letter-spacing: 0; }
-.label-en { font-family: var(--font-mono); font-size: 14px; letter-spacing: 0.2em; font-weight: 600; }
+/* 형광 하이라이트 */
+.hl { background: var(--orange-hl); padding: 0 calc(12 * var(--u)); box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.hl-line { background: linear-gradient(transparent 58%, var(--orange-tint-2) 58%); }
+/* 그라데이션 숫자 */
+.grad { background: linear-gradient(90deg, #ffa04f, var(--orange-deep)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.stack { display: flex; flex-direction: column; align-items: center; gap: calc(14 * var(--u)); }
+
+/* 세로 구분선 */
+.vline { width: 2px; height: calc(150 * var(--u)); background: var(--fg); opacity: .5; }
 
 /* 입력 필요 값 */
-.tbd { display: inline-block; padding: 0 8px; border: 1.5px dashed var(--accent); color: var(--accent); border-radius: 4px; font-family: var(--font-mono); font-weight: 600; background: var(--accent-soft); }
+.tbd { display: inline-block; padding: 0 calc(10 * var(--u)); border: calc(3 * var(--u)) dashed var(--orange); border-radius: calc(8 * var(--u)); background: #fff; color: var(--orange-deep); }
 
 /* 이미지 자리 */
 .ph {
-  width: 100%; max-width: 100%; aspect-ratio: 4 / 3; border-radius: 6px;
-  background: repeating-linear-gradient(135deg, var(--ph) 0 14px, var(--ph-stripe) 14px 28px);
-  border: 1px solid var(--line);
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px;
-  color: var(--muted); font-size: 15px; line-height: 1.6;
+  width: 100%; aspect-ratio: 860 / 700; max-width: 100%;
+  background: repeating-linear-gradient(135deg, var(--ph) 0 calc(18 * var(--u)), var(--ph-stripe) calc(18 * var(--u)) calc(36 * var(--u)));
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(14 * var(--u));
+  padding: calc(40 * var(--u)); text-align: center; color: var(--muted);
+  font-size: calc(28 * var(--u)); line-height: 1.55; letter-spacing: -0.02em;
 }
-.ph.tall { aspect-ratio: 3 / 4; }
-.ph.wide { aspect-ratio: 16 / 9; }
-.ph b { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.16em; color: var(--accent); font-weight: 600; }
-section.ink .ph { background: repeating-linear-gradient(135deg, #1e1d22 0 14px, #232228 14px 28px); border-color: var(--ink-line); color: var(--ink-muted); }
-.ph-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
-.ph-grid .ph { aspect-ratio: 1 / 1; }
+.ph b { font-family: var(--mono); font-size: calc(22 * var(--u)); letter-spacing: 0.16em; color: var(--orange); }
+.ph.tall { aspect-ratio: 860 / 1100; }
+.ph.wide { aspect-ratio: 860 / 520; }
+.ph.round { border-radius: calc(28 * var(--u)); }
+.ph-grid { display: grid; grid-template-columns: 1fr 1fr; gap: calc(14 * var(--u)); width: 100%; }
+.ph-grid .ph { aspect-ratio: 1 / 1; border-radius: calc(20 * var(--u)); }
+section.ink .ph { background: repeating-linear-gradient(135deg, #252428 0 calc(18 * var(--u)), #2c2b30 calc(18 * var(--u)) calc(36 * var(--u))); color: var(--ink-sub); }
 
-/* 원칙 3줄 */
-.principles { display: grid; gap: 0; width: 100%; max-width: 440px; border-top: 1px solid var(--line); }
-.principles div { display: grid; grid-template-columns: 1fr 1fr; padding: 18px 4px; border-bottom: 1px solid var(--line); font-family: var(--font-display); font-size: 20px; text-align: left; gap: 12px; }
-.principles span:last-child { font-weight: 700; }
-.principles span:last-child::before { content: "→ "; color: var(--accent); font-weight: 400; }
+/* 흰 카드 */
+.card { width: 100%; background: var(--card); border-radius: calc(36 * var(--u)); padding: calc(56 * var(--u)) calc(44 * var(--u)); display: flex; flex-direction: column; align-items: center; gap: calc(32 * var(--u)); box-shadow: 0 calc(10 * var(--u)) calc(40 * var(--u)) rgba(240, 90, 0, .08); }
+
+/* 원칙 */
+.principles { width: 100%; display: flex; flex-direction: column; gap: calc(18 * var(--u)); }
+.principles div { display: flex; justify-content: space-between; align-items: center; background: var(--card); border-radius: calc(24 * var(--u)); padding: calc(34 * var(--u)) calc(48 * var(--u)); font-size: calc(40 * var(--u)); letter-spacing: -0.03em; }
+.principles span:first-child { color: var(--sub); font-weight: 500; }
+.principles span:last-child { font-weight: 900; color: var(--orange-deep); }
 
 /* 표기 vs 실측 */
-.compare { display: grid; grid-template-columns: 1fr 1fr; width: 100%; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--bg); }
-.compare > div { padding: 28px 12px; display: flex; flex-direction: column; gap: 10px; align-items: center; }
-.compare > div + div { border-left: 1px solid var(--line); background: var(--accent-soft); }
-.compare .num { font-size: clamp(30px, 8vw, 44px); }
-.compare .k { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.14em; color: var(--muted); }
+.compare { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: calc(18 * var(--u)); }
+.compare > div { border-radius: calc(28 * var(--u)); padding: calc(48 * var(--u)) calc(16 * var(--u)); display: flex; flex-direction: column; gap: calc(16 * var(--u)); align-items: center; background: #f5f3f0; }
+.compare > div:last-child { background: var(--orange); color: #fff; }
+.compare .k { font-size: calc(30 * var(--u)); font-weight: 700; }
+.compare .v { font-size: calc(72 * var(--u)); font-weight: 900; letter-spacing: -0.04em; line-height: 1; }
+.compare > div:last-child .tbd { background: #fff; }
 
-/* 과정 흐름 */
-.flow { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px; width: 100%; }
-.flow .node { padding: 12px 18px; border: 1px solid var(--line); border-radius: 999px; background: var(--bg); font-weight: 500; font-size: 16px; }
-.flow .arrow { color: var(--accent); font-family: var(--font-mono); }
+/* 흐름 */
+.flow { width: 100%; display: flex; align-items: center; justify-content: center; gap: calc(14 * var(--u)); flex-wrap: wrap; }
+.flow .node { background: var(--card); border: calc(3 * var(--u)) solid var(--orange); border-radius: 999px; padding: calc(20 * var(--u)) calc(34 * var(--u)); font-size: calc(32 * var(--u)); font-weight: 700; letter-spacing: -0.03em; }
+.flow .arr { color: var(--orange); font-size: calc(40 * var(--u)); font-weight: 900; }
 
 /* 세대 */
-.gens { display: flex; flex-direction: column; width: 100%; max-width: 420px; }
-.gen { display: grid; grid-template-columns: 72px 1fr; align-items: center; padding: 20px 0; border-bottom: 1px solid var(--ink-line); text-align: left; gap: 12px; color: var(--ink-muted); }
-.gen .g { font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.1em; }
-.gen .t { font-family: var(--font-display); font-size: 20px; }
-.gen.now { color: var(--ink-fg); border-bottom: 2px solid var(--accent); }
-.gen.now .g { color: var(--accent); font-weight: 600; }
-.gen.now .t { font-weight: 700; }
-
-/* 리포좀 기준 스펙 */
-.spec { display: grid; grid-template-columns: 1fr 1fr; width: 100%; gap: 12px; }
-.spec > div { border: 1px solid var(--line); border-radius: 8px; padding: 28px 12px; display: flex; flex-direction: column; gap: 10px; background: var(--bg); }
-.spec .num { font-size: clamp(28px, 7vw, 40px); color: var(--accent); }
-.spec .num small { font-size: 0.5em; color: var(--fg); margin-left: 2px; }
+.gens { width: 100%; display: flex; flex-direction: column; align-items: center; gap: calc(10 * var(--u)); }
+.gen { width: 100%; border-radius: calc(24 * var(--u)); padding: calc(30 * var(--u)) calc(44 * var(--u)); display: flex; justify-content: space-between; align-items: center; background: #2a292d; color: var(--ink-sub); font-size: calc(38 * var(--u)); font-weight: 700; letter-spacing: -0.03em; }
+.gen .g { font-family: var(--mono); font-size: calc(26 * var(--u)); letter-spacing: .08em; }
+.gen.now { background: var(--orange); color: #fff; font-size: calc(46 * var(--u)); font-weight: 900; padding-block: calc(40 * var(--u)); }
+.gens .down { color: #5d5a60; font-size: calc(34 * var(--u)); line-height: 1; }
 
 /* 리포좀 도식 */
-.lipo { width: 100%; max-width: 360px; height: auto; }
-.lipo .outer { fill: none; stroke: var(--accent); stroke-width: 3; }
-.lipo .inner { fill: none; stroke: var(--accent); stroke-width: 3; opacity: .55; }
-.lipo .core { fill: var(--accent-soft); }
-.lipo text { fill: var(--fg); font-family: var(--font-mono); font-size: 13px; }
-.lipo .lead-line { stroke: var(--muted); stroke-width: 1; }
+.lipo { width: calc(560 * var(--u)); max-width: 100%; height: auto; }
+.lipo .outer { fill: none; stroke: var(--orange); stroke-width: 6; }
+.lipo .inner { fill: none; stroke: var(--orange-hl); stroke-width: 6; }
+.lipo .core { fill: var(--orange-tint); }
+.lipo .heads { fill: var(--orange); }
+.lipo text { fill: var(--fg); font-family: var(--font); font-weight: 700; font-size: 22px; }
+.lipo .ln { stroke: var(--muted); stroke-width: 2; }
+
+/* 스펙 */
+.spec { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: calc(18 * var(--u)); }
+.spec > div { background: var(--card); border-radius: calc(32 * var(--u)); padding: calc(56 * var(--u)) calc(16 * var(--u)); display: flex; flex-direction: column; align-items: center; gap: calc(14 * var(--u)); }
+.spec .v { font-size: calc(76 * var(--u)); font-weight: 900; letter-spacing: -0.05em; line-height: 1; }
+.spec .v small { font-size: 0.45em; margin-left: calc(4 * var(--u)); }
+.spec .k { font-size: calc(28 * var(--u)); color: var(--sub); }
 
 /* 인체 경로 */
-.route { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; gap: 0; position: relative; }
-.route div { display: flex; flex-direction: column; gap: 6px; align-items: center; padding: 20px 4px; border-top: 2px solid var(--line); }
-.route div:last-child { border-top-color: var(--accent); }
-.route .n { font-family: var(--font-display); font-size: 26px; font-weight: 700; }
-.route .s { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.route { width: 100%; display: flex; align-items: center; justify-content: center; gap: calc(20 * var(--u)); }
+.route .dot { width: calc(190 * var(--u)); aspect-ratio: 1; border-radius: 50%; background: var(--orange-tint); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(6 * var(--u)); }
+.route .dot:last-of-type { background: var(--orange); color: #fff; }
+.route .n { font-size: calc(56 * var(--u)); font-weight: 900; line-height: 1; }
+.route .s { font-family: var(--mono); font-size: calc(18 * var(--u)); letter-spacing: .1em; opacity: .7; }
+.route .arr { color: var(--orange); font-size: calc(44 * var(--u)); font-weight: 900; }
 
-/* STEP 리스트 */
-.steps { width: 100%; display: flex; flex-direction: column; text-align: left; border: 1px solid var(--ink-line); border-radius: 8px; overflow: hidden; }
-.step { display: grid; grid-template-columns: 92px 1fr auto; gap: 12px; align-items: center; padding: 20px 18px; border-bottom: 1px solid var(--ink-line); }
-.step:last-child { border-bottom: 0; background: #22180f; }
-.step .k { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.12em; color: var(--accent); font-weight: 600; }
-.step .t { font-family: var(--font-display); font-size: 18px; font-weight: 600; }
-.step .v { font-family: var(--font-mono); font-size: 15px; color: var(--ink-muted); }
+/* 질문 말풍선 */
+.qbubble { position: relative; width: calc(640 * var(--u)); max-width: 100%; background: rgba(255,255,255,.88); color: var(--fg); border-radius: calc(32 * var(--u)); padding: calc(52 * var(--u)) calc(40 * var(--u)); display: flex; flex-direction: column; gap: calc(18 * var(--u)); align-items: center; }
+.qbubble::after { content: ""; position: absolute; left: 50%; bottom: calc(-26 * var(--u)); transform: translateX(-50%); border: calc(26 * var(--u)) solid transparent; border-bottom: 0; border-top-color: rgba(255,255,255,.88); }
+.qbubble .q { font-size: calc(80 * var(--u)); font-weight: 900; color: var(--orange); line-height: 1; }
+.qwords { display: flex; flex-direction: column; gap: calc(6 * var(--u)); }
 
-/* 결과 표 */
-.result { width: 100%; text-align: left; border-collapse: collapse; font-size: 16px; }
-.result-wrap { width: 100%; overflow-x: auto; }
-.result th, .result td { padding: 16px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
-.result th { font-weight: 500; color: var(--muted); width: 50%; }
-.result td { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
-.meta { width: 100%; display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; text-align: left; font-size: 14px; padding: 18px 20px; background: var(--paper); border-radius: 6px; }
-.meta dt { color: var(--muted); font-family: var(--font-mono); font-size: 13px; }
-.meta dd { margin: 0; }
+/* STEP */
+.steps { width: 100%; display: flex; flex-direction: column; gap: calc(14 * var(--u)); }
+.step { display: flex; align-items: center; justify-content: space-between; gap: calc(20 * var(--u)); background: #2a292d; border-radius: calc(24 * var(--u)); padding: calc(36 * var(--u)) calc(44 * var(--u)); text-align: left; }
+.step .k { font-family: var(--mono); font-size: calc(24 * var(--u)); letter-spacing: .1em; color: var(--orange); font-weight: 700; min-width: calc(150 * var(--u)); }
+.step .t { flex: 1; font-size: calc(38 * var(--u)); font-weight: 700; letter-spacing: -0.03em; }
+.step .v { font-family: var(--mono); font-size: calc(34 * var(--u)); font-weight: 700; color: #fff; }
+.step.result { background: var(--orange); }
+.step.result .k { color: #fff; }
+.steps .down { text-align: center; color: #5d5a60; font-size: calc(30 * var(--u)); line-height: 1; }
 
-/* 확인 항목 체크 */
-.checks { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.checks div { padding: 22px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); display: flex; flex-direction: column; gap: 6px; }
-.checks .k { font-family: var(--font-mono); font-size: 12px; letter-spacing: .12em; color: var(--accent); font-weight: 600; }
-.checks .t { font-weight: 700; font-size: 17px; }
+/* 결과 */
+.result-rows { width: 100%; display: flex; flex-direction: column; gap: calc(14 * var(--u)); }
+.result-rows div { display: flex; justify-content: space-between; align-items: center; background: var(--orange-tint); border-radius: calc(24 * var(--u)); padding: calc(36 * var(--u)) calc(44 * var(--u)); font-size: calc(34 * var(--u)); font-weight: 700; letter-spacing: -0.03em; }
+.result-rows .v { font-size: calc(56 * var(--u)); font-weight: 900; color: var(--orange-deep); font-variant-numeric: tabular-nums; }
+.meta { width: 100%; display: grid; grid-template-columns: auto 1fr; gap: calc(16 * var(--u)) calc(36 * var(--u)); text-align: left; font-size: calc(28 * var(--u)); padding: calc(40 * var(--u)) calc(44 * var(--u)); border: 2px solid var(--line); border-radius: calc(24 * var(--u)); }
+.meta dt { color: var(--muted); font-weight: 500; }
+.meta dd { margin: 0; font-weight: 700; }
+
+/* 확인 항목 */
+.checks { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: calc(18 * var(--u)); }
+.checks div { background: var(--card); border-radius: calc(28 * var(--u)); padding: calc(48 * var(--u)) calc(20 * var(--u)); display: flex; flex-direction: column; align-items: center; gap: calc(14 * var(--u)); }
+.checks .ic { width: calc(64 * var(--u)); aspect-ratio: 1; border-radius: 50%; background: var(--orange); color: #fff; display: flex; align-items: center; justify-content: center; font-size: calc(36 * var(--u)); font-weight: 900; }
+.checks .t { font-size: calc(36 * var(--u)); font-weight: 900; letter-spacing: -0.03em; }
 
 /* 섭취 포인트 */
-.points { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.points div { padding: 22px 10px; border-radius: 8px; background: var(--bg); border: 1px solid var(--line); font-weight: 700; font-family: var(--font-display); font-size: 18px; }
+.points { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: calc(18 * var(--u)); }
+.points div { background: var(--orange-tint); border-radius: calc(28 * var(--u)); padding: calc(52 * var(--u)) calc(16 * var(--u)); font-size: calc(42 * var(--u)); font-weight: 900; letter-spacing: -0.03em; }
 
 /* 스토리 */
-.story { text-align: left; align-items: stretch; }
-.story h2 { text-align: left; }
-.story p { max-width: none; }
+.story { align-items: stretch; text-align: left; }
+.story .t-body { text-wrap: pretty; }
 
 /* 고지 */
-.notice { text-align: left; align-items: stretch; gap: 20px; padding-block: 56px; font-size: 14px; line-height: 1.7; }
-.notice h3 { font-size: 16px; }
-.notice ul { margin: 0; padding-left: 18px; color: var(--muted); }
-.notice .box { border: 1px solid var(--line); border-radius: 6px; padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; }
-
-.divider-q { font-family: var(--font-display); font-size: 64px; color: var(--accent); line-height: 1; font-weight: 700; }
-
-@media (max-width: 440px) {
-  body { font-size: 16px; }
-  section { padding: 64px 16px; gap: 24px; }
-  .step { grid-template-columns: 1fr auto; }
-  .step .k { grid-column: 1 / -1; }
-  .principles div { font-size: 17px; }
-}
-@media (prefers-reduced-motion: no-preference) {
-  .hero-q { animation: blink 2.4s ease-in-out 0.6s 2; }
-  @keyframes blink { 50% { opacity: .35; } }
-}
+.notice { align-items: stretch; text-align: left; gap: calc(28 * var(--u)); padding-block: calc(90 * var(--u)); background: #f7f6f4; }
+.notice h3 { margin: 0; font-size: calc(32 * var(--u)); }
+.notice .box { background: #fff; border-radius: calc(20 * var(--u)); padding: calc(36 * var(--u)) calc(40 * var(--u)); display: flex; flex-direction: column; gap: calc(14 * var(--u)); font-size: calc(26 * var(--u)); line-height: 1.6; }
+.notice ul { margin: 0; padding-left: 1.2em; color: var(--sub); }
+.notice p { font-size: calc(24 * var(--u)); color: var(--muted); }
 </style>
 
 <main class="page">
 
   <!-- 01 HOOK -->
   <section>
-    <span class="eyebrow">MC2LAB · VITAMIN C</span>
-    <h1>비타민C 1,000mg.<br>정말 <span class="accent">1,000mg</span>일까요<span class="hero-q accent">?</span></h1>
-    <p class="lead muted">우리는 제품에 적힌 숫자를<br>당연히 믿고 먹습니다.</p>
-    <div class="ph"><b>IMAGE 01</b>제품 패키지의 1,000mg 표기를 크게 보여준 뒤<br>물음표로 전환</div>
+    <p class="t-body sub">우리는 제품에 적힌 숫자를<br>당연히 믿고 먹습니다.</p>
+    <div class="stack">
+      <span class="label">VITAMIN C</span>
+      <span class="t-giant grad">1,000<small>mg</small></span>
+    </div>
+    <h1 class="t-hero">정말 <span class="hl">1,000mg</span>일까요?</h1>
   </section>
+  <div class="ph"><b>IMAGE 01</b>제품 패키지의 1,000mg 표기를 크게 보여준 뒤<br>물음표로 전환</div>
 
-  <section class="paper">
-    <p class="lead">하지만<br><span class="strong">‘1,000mg이라고 적혀 있는 것’</span>과<br><span class="strong">‘실제로 1,000mg이 들어있는 것’</span>은<br>같은 이야기가 아닙니다.</p>
-    <p class="lead">MC2LAB은 여기서 시작했습니다.</p>
-    <h2>표기된 함량이 아니라,<br><span class="accent">실제 함량</span>을 확인하자.</h2>
+  <section>
+    <p class="t-body sub">하지만</p>
+    <p class="t-h2"><span class="hl-line">‘1,000mg이라고 적혀 있는 것’</span>과<br><span class="hl-line">‘실제로 1,000mg이 들어있는 것’</span>은</p>
+    <p class="t-h2 b">같은 이야기가 아닙니다.</p>
+    <div class="vline" aria-hidden="true"></div>
+    <p class="t-body sub">MC2LAB은 여기서 시작했습니다.</p>
+    <h2 class="t-h1">표기된 함량이 아니라,<br><span class="hl">실제 함량</span>을 확인하자.</h2>
   </section>
 
   <!-- 02 원칙 -->
-  <section>
-    <p class="lead muted">새로운 성분을 더하는 것보다<br>먼저 확인하고 싶은 것이 있었습니다.</p>
-    <h2>제품에 적힌 성분과 함량을<br>우리는 실제로 얼마나 먹고 있을까?</h2>
-    <p class="lead">그래서 MC2LAB은<br>아주 기본적인 원칙에서 시작했습니다.</p>
+  <section class="tint">
+    <p class="t-body sub">새로운 성분을 더하는 것보다<br>먼저 확인하고 싶은 것이 있었습니다.</p>
+    <h2 class="t-h1">제품에 적힌 성분과 함량을<br>우리는 실제로<br>얼마나 먹고 있을까?</h2>
+    <p class="t-body sub">그래서 MC2LAB은<br>아주 기본적인 원칙에서 시작했습니다.</p>
     <div class="principles">
       <div><span>적었다면,</span><span>확인할 것.</span></div>
       <div><span>만들었다면,</span><span>검사할 것.</span></div>
       <div><span>그리고 그 결과를</span><span>보여줄 것.</span></div>
     </div>
-    <p class="muted">이것이 MC2LAB이 비타민을 만들기 시작한 이유입니다.</p>
+    <p class="t-body">이것이 MC2LAB이<br><span class="b">비타민을 만들기 시작한 이유</span>입니다.</p>
   </section>
 
-  <!-- 03 표기 vs 실측 -->
-  <section class="paper">
-    <div class="ph wide"><b>IMAGE 02</b>제품 성분표의 비타민C 1,000mg을 확대해 보여주는 이미지</div>
-    <h2>적힌 함량이 아닌,<br>실제로 검사한 함량</h2>
+  <!-- 03 실제 함량 -->
+  <div class="ph"><b>IMAGE 02</b>제품 성분표의 비타민C 1,000mg을 확대해 보여주는 이미지</div>
+  <section>
+    <p class="t-body sub">적힌 함량이 아닌,</p>
+    <h2 class="t-h1"><span class="hl">실제로 검사한</span> 함량</h2>
     <div class="stack">
-      <span class="label-en">VITAMIN C</span>
-      <span class="num num-xl">1,000<small>mg</small></span>
+      <span class="label">VITAMIN C</span>
+      <span class="t-giant grad">1,000<small>mg</small></span>
     </div>
-    <p class="lead">1,000mg이라고 적는 것으로 끝내지 않습니다.<br>제품이 완성된 후 실제 비타민C 함량을 확인합니다.</p>
-    <p class="lead strong">우리가 만든 제품에 실제로 얼마나 들어있는지.<br>MC2LAB은 완제품을 기준으로 직접 확인합니다.</p>
+    <p class="t-body">1,000mg이라고 적는 것으로<br><span class="b">끝내지 않습니다.</span></p>
+    <p class="t-body sub">제품이 완성된 후<br>실제 비타민C 함량을 확인합니다.</p>
+  </section>
+
+  <section class="tint-soft">
+    <h2 class="t-h1">우리가 만든 제품에<br>실제로 <span class="o">얼마나</span> 들어있는지.</h2>
+    <p class="t-body sub">MC2LAB은 완제품을 기준으로<br>직접 확인합니다.</p>
     <div class="flow" aria-label="검사 과정">
-      <span class="node">완제품</span><span class="arrow">→</span>
-      <span class="node">시험기관</span><span class="arrow">→</span>
+      <span class="node">완제품</span><span class="arr">→</span>
+      <span class="node">시험기관</span><span class="arr">→</span>
       <span class="node">성분 함량 검사</span>
     </div>
     <div class="compare">
-      <div><span class="k">표기 함량</span><span class="num">1,000mg</span></div>
-      <div><span class="k">실측 결과</span><span class="num accent"><span class="tbd">NN</span>mg</span></div>
+      <div><span class="k">표기 함량</span><span class="v">1,000mg</span></div>
+      <div><span class="k">실측 결과</span><span class="v"><span class="tbd">NN</span>mg</span></div>
     </div>
-    <div class="ph wide"><b>IMAGE 03</b>실제 시험성적서 중 비타민C 함량 결과 부분 확대</div>
   </section>
+  <div class="ph"><b>IMAGE 03</b>실제 시험성적서 중 비타민C 함량 결과 부분 확대</div>
 
   <!-- 04 왜 검사까지 -->
   <section>
-    <h2>왜 굳이 검사까지 할까요?</h2>
-    <p class="lead strong accent">매일 먹는 것이니까.</p>
-    <p class="lead">무엇이 들어있는지.<br>그리고 얼마나 들어있는지.</p>
-    <p class="lead muted">적어도 우리가 먹는 제품만큼은<br>확인할 수 있어야 한다고 생각했습니다.</p>
-    <h2>그래서 MC2LAB은<br>만들고 끝내지 않습니다.<br>만든 뒤, 직접 검사합니다.</h2>
-    <div class="ph"><b>IMAGE 04</b>제품 패키지와 시험성적서를 함께 배치한 이미지</div>
+    <h2 class="t-h1">왜 굳이<br>검사까지 할까요?</h2>
+    <div class="vline" aria-hidden="true"></div>
+    <p class="t-big grad">매일 먹는 것이니까.</p>
+    <p class="t-h2">무엇이 들어있는지.<br>그리고 <span class="b">얼마나</span> 들어있는지.</p>
+    <p class="t-body sub">적어도 우리가 먹는 제품만큼은<br>확인할 수 있어야 한다고 생각했습니다.</p>
+  </section>
+
+  <section class="tint">
+    <p class="t-body sub">그래서 MC2LAB은</p>
+    <h2 class="t-h1">만들고 끝내지 않습니다.<br><span class="hl">만든 뒤, 직접 검사합니다.</span></h2>
+    <div class="ph round"><b>IMAGE 04</b>제품 패키지와 시험성적서를 함께 배치한 이미지</div>
   </section>
 
   <!-- 05 함량에서 설계로 -->
-  <section class="ink">
-    <span class="eyebrow">NEXT STANDARD</span>
-    <h2>그런데, 함량만 정확하면<br>충분할까요?</h2>
-    <p class="lead muted">정확한 함량은 MC2LAB이 생각하는 기본입니다.<br>그래서 그다음을 고민했습니다.</p>
-    <h2>비타민C 1,000mg을<br>어떻게 만들 것인가.</h2>
-    <p class="lead">우리가 선택한 다음 기준은<br><span class="accent strong">전달을 고려한 설계</span>였습니다.</p>
-    <div class="ph wide"><b>IMAGE 05</b>VITAMIN C 1,000mg 숫자에서 리포좀 구조로 전환되는 이미지</div>
-  </section>
-
-  <section class="ink">
-    <span class="eyebrow">3RD GENERATION</span>
-    <h2>3세대 리포좀 비타민C</h2>
-    <p class="lead muted">비타민C를 섭취하는 것에서,<br>더 높은 함량을 찾는 것으로,<br>그리고 이제는 섭취 이후의 전달까지 고려하는 것으로.</p>
-    <div class="gens">
-      <div class="gen"><span class="g">1세대</span><span class="t">비타민C</span></div>
-      <div class="gen"><span class="g">2세대</span><span class="t">함량을 높인 비타민C</span></div>
-      <div class="gen now"><span class="g">3세대</span><span class="t">리포좀 비타민C</span></div>
+  <section class="orange tight">
+    <div class="qbubble">
+      <span class="q">Q</span>
+      <p class="t-h2 b">그런데, 함량만 정확하면<br>충분할까요?</p>
     </div>
-    <h2>함량에서, <span class="accent">설계</span>로.</h2>
-    <p class="lead">MC2LAB은 비타민C 1,000mg을<br>리포좀 방식으로 설계했습니다.</p>
   </section>
 
-  <!-- 06 리포좀 구조 -->
   <section>
-    <span class="eyebrow">LIPOSOME</span>
-    <svg class="lipo" viewBox="0 0 360 260" role="img" aria-label="비타민C를 인지질 이중막이 감싸는 리포좀 구조 도식">
-      <circle class="core" cx="130" cy="130" r="88"/>
-      <circle class="outer" cx="130" cy="130" r="104"/>
-      <circle class="inner" cx="130" cy="130" r="88"/>
-      <text x="130" y="134" text-anchor="middle">VITAMIN C</text>
-      <line class="lead-line" x1="226" y1="90" x2="262" y2="70"/>
-      <text x="266" y="62">인지질</text>
-      <text x="266" y="80">이중막</text>
-    </svg>
-    <p class="muted">비타민C 성분을 인지질 이중막이 감싸고 있는 리포좀 구조</p>
-    <div class="ph"><b>IMAGE 06</b>리포좀 구조 3D 이미지 (위 도식의 완성본)</div>
-    <p class="lead">MC2LAB은 여기서 또 하나의 질문을 던졌습니다.</p>
-    <h2>다 같은 리포좀일까요?</h2>
-    <p class="lead muted">‘리포좀’이라는 이름보다 우리에게 더 중요했던 것은<br><span class="strong" style="color:var(--fg)">실제로 어떻게 만들어졌는가</span>였습니다.</p>
-    <p class="lead">리포좀을 적용했다는 것에서 끝내지 않고<br>우리가 원하는 기준부터 정했습니다.</p>
-    <div class="ph wide"><b>IMAGE 07</b>크기와 균일도가 서로 다른 리포좀 입자 비교 이미지</div>
+    <p class="t-body sub">정확한 함량은<br>MC2LAB이 생각하는 기본입니다.<br>그래서 그다음을 고민했습니다.</p>
+    <h2 class="t-h1">비타민C 1,000mg을<br>어떻게 만들 것인가.</h2>
+    <div class="vline" aria-hidden="true"></div>
+    <p class="t-body sub">우리가 선택한 다음 기준은</p>
+    <p class="t-big grad">전달을 고려한<br>설계</p>
+  </section>
+  <div class="ph"><b>IMAGE 05</b>VITAMIN C 1,000mg 숫자에서 리포좀 구조로 전환되는 이미지</div>
+
+  <section class="ink">
+    <span class="label">3RD GENERATION</span>
+    <h2 class="t-h1">3세대<br><span class="o">리포좀 비타민C</span></h2>
+    <p class="t-body sub">비타민C를 섭취하는 것에서,<br>더 높은 함량을 찾는 것으로,<br>그리고 이제는 섭취 이후의 전달까지<br>고려하는 것으로.</p>
+    <div class="gens">
+      <div class="gen"><span class="g">1세대</span><span>비타민C</span></div>
+      <span class="down" aria-hidden="true">↓</span>
+      <div class="gen"><span class="g">2세대</span><span>함량을 높인 비타민C</span></div>
+      <span class="down" aria-hidden="true">↓</span>
+      <div class="gen now"><span class="g">3세대</span><span>리포좀 비타민C</span></div>
+    </div>
+    <h2 class="t-hero">함량에서, <span class="o">설계로.</span></h2>
+    <p class="t-body sub">MC2LAB은 비타민C 1,000mg을<br>리포좀 방식으로 설계했습니다.</p>
   </section>
 
-  <section class="paper">
-    <h2>리포좀도 기준부터 정했습니다.</h2>
+  <!-- 06 리포좀 -->
+  <section>
+    <span class="label">LIPOSOME</span>
+    <svg class="lipo" viewBox="0 0 560 420" role="img" aria-label="비타민C를 인지질 이중막이 감싸는 리포좀 구조 도식">
+      <circle class="core" cx="220" cy="210" r="150"/>
+      <circle class="outer" cx="220" cy="210" r="176"/>
+      <circle class="inner" cx="220" cy="210" r="150"/>
+      <g class="heads" id="heads"></g>
+      <text x="220" y="218" text-anchor="middle">VITAMIN C</text>
+      <line class="ln" x1="378" y1="120" x2="440" y2="80"/>
+      <text x="446" y="72">인지질</text>
+      <text x="446" y="100">이중막</text>
+    </svg>
+    <p class="t-small sub">비타민C 성분을 인지질 이중막이 감싸고 있는 리포좀 구조</p>
+    <div class="vline" aria-hidden="true"></div>
+    <p class="t-body sub">MC2LAB은 여기서<br>또 하나의 질문을 던졌습니다.</p>
+    <h2 class="t-hero"><span class="hl">다 같은 리포좀</span>일까요?</h2>
+    <p class="t-body sub">‘리포좀’이라는 이름보다<br>우리에게 더 중요했던 것은</p>
+    <p class="t-h1">실제로 <span class="o">어떻게</span><br>만들어졌는가.</p>
+    <p class="t-body sub">리포좀을 적용했다는 것에서 끝내지 않고<br>우리가 원하는 기준부터 정했습니다.</p>
+  </section>
+  <div class="ph"><b>IMAGE 06</b>크기와 균일도가 서로 다른 리포좀 입자 비교 이미지</div>
+
+  <section class="tint">
+    <h2 class="t-h1">리포좀도<br><span class="hl">기준부터</span> 정했습니다.</h2>
     <div class="spec">
-      <div><span class="label-en">SIZE</span><span class="num">100–200<small>nm</small></span><span class="muted" style="font-size:14px">입자 크기</span></div>
-      <div><span class="label-en">PDI</span><span class="num">0.2–0.3</span><span class="muted" style="font-size:14px">입자 균일도 지수</span></div>
+      <div><span class="label">SIZE</span><span class="v grad">100–200<small>nm</small></span><span class="k">입자 크기</span></div>
+      <div><span class="label">PDI</span><span class="v grad">0.2–0.3</span><span class="k">입자 균일도 지수</span></div>
     </div>
     <div class="ph-grid">
-      <div class="ph"><b>IMAGE 08</b>리포좀 제조사</div>
-      <div class="ph"><b>IMAGE 09</b>연구실</div>
-      <div class="ph"><b>IMAGE 10</b>생산시설</div>
-      <div class="ph"><b>IMAGE 11</b>생산 공정</div>
+      <div class="ph"><b>IMAGE 07</b>리포좀 제조사</div>
+      <div class="ph"><b>IMAGE 08</b>연구실</div>
+      <div class="ph"><b>IMAGE 09</b>생산시설</div>
+      <div class="ph"><b>IMAGE 10</b>생산 공정</div>
     </div>
   </section>
 
   <!-- 07 섭취 후 -->
-  <section>
-    <h2>그런데 잘 만들어진 리포좀은<br>먹은 뒤에도 그대로일까요?</h2>
-    <p class="lead muted">리포좀을 만들었다는 것만으로<br>궁금증은 끝나지 않았습니다.<br>우리가 실제로 궁금했던 것은 그다음이었습니다.</p>
-    <h2 class="accent">실제로 먹은 뒤,<br>어떤 변화를 보일까?</h2>
-    <div class="ph"><b>IMAGE 12</b>완성된 비타민(리포좀 입자)이 입으로 들어가는 이미지</div>
-    <p class="lead">비타민C는 섭취 후<br>서로 다른 환경을 지나게 됩니다.</p>
-    <div class="route" aria-label="섭취 후 이동 경로">
-      <div><span class="n">입</span><span class="s">MOUTH</span></div>
-      <div><span class="n">위</span><span class="s">STOMACH</span></div>
-      <div><span class="n">장</span><span class="s">INTESTINE</span></div>
+  <section class="orange tight">
+    <div class="qbubble">
+      <span class="q">Q</span>
+      <p class="t-h2 b">잘 만들어진 리포좀은<br>먹은 뒤에도 그대로일까요?</p>
     </div>
-    <p class="lead">위와 장의 환경은 다릅니다.<br>그렇다면 우리가 만든 리포좀 비타민C는<br>이 과정에서 어떤 모습을 보일까요?</p>
-    <div class="ph wide"><b>IMAGE 13</b>입 → 위 → 장으로 이어지는 인체 내 이동 경로 이미지</div>
   </section>
 
-  <section class="paper">
-    <h2>궁금하다면,<br>직접 확인하면 됩니다.</h2>
-    <p class="lead">유지될까?<br>달라질까?<br>얼마나 남아 있을까?</p>
-    <p class="lead strong">MC2LAB은 그 과정을 직접 시험하기로 했습니다.</p>
-    <div class="ph"><b>IMAGE 14</b>물음표가 시험 장비 또는 시험성적서로 전환되는 이미지</div>
+  <section>
+    <p class="t-body sub">리포좀을 만들었다는 것만으로<br>궁금증은 끝나지 않았습니다.<br>우리가 실제로 궁금했던 것은<br>그다음이었습니다.</p>
+    <h2 class="t-h1">실제로 먹은 뒤,<br><span class="hl">어떤 변화</span>를 보일까?</h2>
+  </section>
+  <div class="ph"><b>IMAGE 11</b>완성된 비타민(리포좀 입자)이 입으로 들어가는 이미지</div>
+
+  <section>
+    <p class="t-body sub">비타민C는 섭취 후<br>서로 다른 환경을 지나게 됩니다.</p>
+    <div class="route" aria-label="섭취 후 이동 경로">
+      <div class="dot"><span class="n">입</span><span class="s">MOUTH</span></div>
+      <span class="arr">→</span>
+      <div class="dot"><span class="n">위</span><span class="s">STOMACH</span></div>
+      <span class="arr">→</span>
+      <div class="dot"><span class="n">장</span><span class="s">INTESTINE</span></div>
+    </div>
+    <h2 class="t-h1">위와 장의 환경은<br>다릅니다.</h2>
+    <p class="t-body sub">그렇다면 우리가 만든 리포좀 비타민C는<br>이 과정에서 어떤 모습을 보일까요?</p>
+    <div class="ph round wide"><b>IMAGE 12</b>입 → 위 → 장으로 이어지는 인체 내 이동 경로 이미지</div>
+  </section>
+
+  <section class="tint">
+    <h2 class="t-hero">궁금하다면,<br><span class="hl">직접 확인</span>하면 됩니다.</h2>
+    <p class="t-h2">유지될까?<br>달라질까?<br>얼마나 남아 있을까?</p>
+    <p class="t-body">MC2LAB은 그 과정을<br><span class="b">직접 시험하기로 했습니다.</span></p>
+    <div class="ph round"><b>IMAGE 13</b>물음표가 시험 장비 또는 시험성적서로 전환되는 이미지</div>
   </section>
 
   <!-- 08 시험 설계 -->
   <section class="ink">
-    <span class="eyebrow">TEST DESIGN</span>
-    <h2>만드는 데서 끝내지 않고,<br>먹은 뒤의 환경까지.</h2>
-    <p class="lead muted">실제 섭취 이후의 환경을 고려해<br>리포좀 비타민C가 어떻게 변화하는지 확인합니다.</p>
+    <span class="label">TEST DESIGN</span>
+    <h2 class="t-h1">만드는 데서 끝내지 않고,<br><span class="o">먹은 뒤의 환경까지.</span></h2>
+    <p class="t-body sub">실제 섭취 이후의 환경을 고려해<br>리포좀 비타민C가 어떻게 변화하는지<br>확인합니다.</p>
     <div class="steps">
       <div class="step"><span class="k">STEP 01</span><span class="t">위 환경</span><span class="v">pH 1.2</span></div>
+      <span class="down" aria-hidden="true">↓</span>
       <div class="step"><span class="k">STEP 02</span><span class="t">장 환경</span><span class="v">pH 6.8</span></div>
-      <div class="step"><span class="k">STEP 03</span><span class="t">시간에 따른 변화 확인</span><span class="v">— </span></div>
-      <div class="step"><span class="k">RESULT</span><span class="t">실제 측정 결과</span><span class="v accent">↓</span></div>
+      <span class="down" aria-hidden="true">↓</span>
+      <div class="step"><span class="k">STEP 03</span><span class="t">시간에 따른 변화 확인</span></div>
+      <span class="down" aria-hidden="true">↓</span>
+      <div class="step result"><span class="k">RESULT</span><span class="t">실제 측정 결과</span></div>
     </div>
   </section>
 
   <!-- 09 결과 -->
   <section>
-    <span class="eyebrow">RESULT</span>
-    <h2>결과는 숫자로 보여드립니다.</h2>
-    <p class="lead muted">어렵게 설명하는 것보다<br>결과를 직접 보여주는 편이<br>더 정확하다고 생각했습니다.</p>
-    <div class="result-wrap">
-      <table class="result">
-        <tbody>
-          <tr><th><span class="tbd">OO</span> 조건 이후</th><td><span class="tbd">NN</span>%</td></tr>
-          <tr><th><span class="tbd">OO</span>시간 이후</th><td><span class="tbd">NN</span>%</td></tr>
-          <tr><th><span class="tbd">OO</span> 시험 결과</th><td><span class="tbd">NN</span></td></tr>
-        </tbody>
-      </table>
+    <span class="label">RESULT</span>
+    <h2 class="t-hero">결과는<br><span class="hl">숫자로</span> 보여드립니다.</h2>
+    <p class="t-body sub">어렵게 설명하는 것보다<br>결과를 직접 보여주는 편이<br>더 정확하다고 생각했습니다.</p>
+    <div class="result-rows">
+      <div><span><span class="tbd">OO</span> 조건 이후</span><span class="v"><span class="tbd">NN</span>%</span></div>
+      <div><span><span class="tbd">OO</span>시간 이후</span><span class="v"><span class="tbd">NN</span>%</span></div>
+      <div><span><span class="tbd">OO</span> 시험 결과</span><span class="v"><span class="tbd">NN</span></span></div>
     </div>
     <dl class="meta">
       <dt>시험기관</dt><dd><span class="tbd">OOOOO</span></dd>
@@ -358,81 +403,82 @@ section.ink .ph { background: repeating-linear-gradient(135deg, #1e1d22 0 14px, 
     </dl>
   </section>
 
-  <section class="paper">
-    <h2>숫자만 보여주고<br>믿어달라고 하지 않겠습니다.</h2>
-    <p class="lead">시험 결과를 요약해서 보여주는 것으로 끝내지 않습니다.</p>
-    <p class="lead muted">어떤 조건에서 시험했고,<br>어떤 방법으로 측정했고,<br>어떤 결과가 나왔는지.</p>
-    <p class="lead strong">직접 확인할 수 있도록<br>시험 결과를 공개합니다.</p>
-    <div class="ph tall"><b>IMAGE 15</b>시험성적서에서 시험조건과 결과 부분을 확대 표시</div>
-    <p class="muted">전체 시험성적서는 와디즈 새소식을 통해 확인하실 수 있습니다.</p>
+  <section class="tint">
+    <h2 class="t-h1">숫자만 보여주고<br>믿어달라고 하지 않겠습니다.</h2>
+    <p class="t-body sub">시험 결과를 요약해서 보여주는 것으로<br>끝내지 않습니다.</p>
+    <p class="t-h2">어떤 조건에서 시험했고,<br>어떤 방법으로 측정했고,<br>어떤 결과가 나왔는지.</p>
+    <p class="t-body">직접 확인할 수 있도록<br><span class="b">시험 결과를 공개합니다.</span></p>
+    <div class="ph round tall"><b>IMAGE 14</b>시험성적서에서 시험조건과 결과 부분을 확대 표시</div>
+    <p class="t-small sub">전체 시험성적서는 와디즈 새소식을 통해<br>확인하실 수 있습니다.</p>
   </section>
 
   <!-- 10 확인 항목 -->
-  <section>
-    <h2>우리가 확인하는 건<br>하나가 아닙니다.</h2>
+  <section class="tint-soft">
+    <h2 class="t-h1">우리가 확인하는 건<br><span class="o">하나가 아닙니다.</span></h2>
     <div class="checks">
-      <div><span class="k">CONTENT</span><span class="t">비타민C 함량</span></div>
-      <div><span class="k">SIZE</span><span class="t">리포좀의 크기</span></div>
-      <div><span class="k">PDI</span><span class="t">입자의 균일도</span></div>
-      <div><span class="k">pH 1.2 / 6.8</span><span class="t">섭취 환경에서의 변화</span></div>
+      <div><span class="ic">✓</span><span class="t">비타민C 함량</span></div>
+      <div><span class="ic">✓</span><span class="t">리포좀의 크기</span></div>
+      <div><span class="ic">✓</span><span class="t">입자의 균일도</span></div>
+      <div><span class="ic">✓</span><span class="t">섭취 환경에서의 변화</span></div>
     </div>
-    <p class="lead strong">확인할 수 있는 것은 직접 확인합니다.</p>
-    <div class="ph wide"><b>IMAGE 16</b>시험 항목을 한눈에 보여주는 이미지</div>
+    <p class="t-h2 b">확인할 수 있는 것은<br>직접 확인합니다.</p>
   </section>
+  <div class="ph"><b>IMAGE 15</b>시험 항목을 한눈에 보여주는 이미지</div>
 
   <!-- 11 제품 -->
-  <section class="paper">
-    <h2>그래서 첫 번째로<br>비타민C를 선택했습니다.</h2>
-    <p class="lead muted">이것저것 더하기보다<br>먼저 하나에 집중하기로 했습니다.</p>
+  <section>
+    <p class="t-body sub">이것저것 더하기보다<br>먼저 하나에 집중하기로 했습니다.</p>
+    <h2 class="t-h1">그래서 첫 번째로<br><span class="hl">비타민C</span>를 선택했습니다.</h2>
     <div class="stack">
-      <span class="label-en">VITAMIN C</span>
-      <span class="num num-xl accent">1,000<small>mg</small></span>
+      <span class="label">VITAMIN C</span>
+      <span class="t-giant grad">1,000<small>mg</small></span>
     </div>
-    <p class="lead">매일 챙기는 비타민C.<br>성분부터 설계, 그리고 확인까지.</p>
-    <p class="lead strong">MC2LAB의 기준으로 만들었습니다.</p>
-    <div class="ph tall"><b>IMAGE 17 · MAIN</b>제품 패키지와 젤리스틱이 처음으로 전체 노출되는 메인 제품 이미지</div>
+    <p class="t-h2">매일 챙기는 비타민C.<br>성분부터 설계, 그리고 확인까지.</p>
+    <p class="t-body b">MC2LAB의 기준으로 만들었습니다.</p>
   </section>
+  <div class="ph tall"><b>IMAGE 16 · MAIN</b>제품 패키지와 젤리스틱이 처음으로 전체 노출되는<br>메인 제품 이미지</div>
 
   <section>
-    <h2>그리고 매일 먹는 제품이니까.</h2>
-    <p class="lead muted">아무리 잘 만들어도<br>매일 챙기기 어렵다면 의미가 없으니까.</p>
+    <h2 class="t-h1">그리고<br>매일 먹는 제품이니까.</h2>
+    <p class="t-body sub">아무리 잘 만들어도<br>매일 챙기기 어렵다면 의미가 없으니까.</p>
     <div class="points">
       <div>오렌지맛</div>
       <div>젤리스틱</div>
-      <div>하루 한 포</div>
+      <div><span class="o">하루 한 포</span></div>
       <div>물 없이 섭취</div>
     </div>
-    <div class="ph"><b>IMAGE 18</b>젤리스틱을 뜯어 섭취하는 이미지</div>
-    <div class="ph"><b>IMAGE 19</b>가방이나 주머니에 휴대하는 이미지</div>
   </section>
+  <div class="ph"><b>IMAGE 17</b>젤리스틱을 뜯어 섭취하는 이미지</div>
+  <div class="ph"><b>IMAGE 18</b>가방이나 주머니에 휴대하는 이미지</div>
 
   <!-- 12 브랜드 -->
   <section class="ink">
-    <h2>제품을 만드는 것보다<br><span class="accent">기준을 만드는 것.</span></h2>
-    <p class="lead muted">비타민C 1,000mg이라는 숫자에서 시작해<br>리포좀의 설계,<br>입자의 크기와 균일도,<br>실제 환경에서의 변화까지.</p>
-    <p class="lead">MC2LAB은 적혀 있는 것을 그대로 믿지 않습니다.<br>직접 확인하고,<br><span class="strong">확인한 것을 보여드립니다.</span></p>
-    <div class="ph wide"><b>IMAGE 20</b>MC2LAB 로고, 연구원 애니메이션 이미지</div>
-    <span class="label-en" style="font-size:18px">MC2LAB</span>
-    <h2>보이지 않는 과정까지,<br>확인할 수 있도록.</h2>
+    <p class="t-body sub">제품을 만드는 것보다</p>
+    <h2 class="t-hero o">기준을 만드는 것.</h2>
+    <p class="t-body sub">비타민C 1,000mg이라는 숫자에서 시작해<br>리포좀의 설계,<br>입자의 크기와 균일도,<br>실제 환경에서의 변화까지.</p>
+    <p class="t-h2">MC2LAB은 적혀 있는 것을<br>그대로 믿지 않습니다.<br><span class="b">직접 확인하고,<br>확인한 것을 보여드립니다.</span></p>
+    <div class="ph round wide"><b>IMAGE 19</b>MC2LAB 로고, 연구원 애니메이션 이미지</div>
+    <span class="label">MC2LAB</span>
+    <h2 class="t-h1">보이지 않는 과정까지,<br>확인할 수 있도록.</h2>
   </section>
 
   <!-- 13 MAKER STORY -->
   <section class="story">
-    <span class="eyebrow" style="text-align:left">MAKER STORY</span>
-    <h2>내 가족이 먹을 제품이니까.</h2>
-    <div class="ph tall"><b>IMAGE 21</b>제작자 이미지</div>
-    <p>다양한 제품을 직접 시험하면서 같은 성분이라도 결과가 다를 수 있다는 것을 확인했습니다.</p>
-    <p>그래서 생각했습니다. 우리가 직접 성분을 확인하고, 내 가족에게도 안심하고 건넬 수 있는 제품을 만들자.</p>
-    <p class="strong">그 생각에서 MC2LAB의 첫 제품이 시작됐습니다.</p>
+    <span class="label">MAKER STORY</span>
+    <h2 class="t-h1">내 가족이<br>먹을 제품이니까.</h2>
+    <div class="ph round tall"><b>IMAGE 20</b>제작자 이미지</div>
+    <p class="t-body sub">다양한 제품을 직접 시험하면서 같은 성분이라도 결과가 다를 수 있다는 것을 확인했습니다.</p>
+    <p class="t-body sub">그래서 생각했습니다. 우리가 직접 성분을 확인하고, 내 가족에게도 안심하고 건넬 수 있는 제품을 만들자.</p>
+    <p class="t-body b">그 생각에서 MC2LAB의 첫 제품이 시작됐습니다.</p>
   </section>
 
-  <section class="story paper">
-    <span class="eyebrow" style="text-align:left">WHY WADIZ</span>
-    <h2>왜 와디즈인가?</h2>
-    <p>MC2LAB의 첫 제품을 어디에서 가장 먼저 선보일지 고민했습니다.</p>
-    <p>우리가 제품을 만들게 된 이유와 과정, 직접 확인한 결과까지 솔직하게 이야기할 수 있는 곳. 그리고 소비자와 가장 가까이에서 직접 반응을 확인할 수 있는 곳이 와디즈라고 생각했습니다.</p>
-    <p>단순히 제품을 판매하는 것보다, 우리가 만든 제품이 실제 시장에서 어떤 평가를 받는지 솔직하게 확인하고 싶었습니다.</p>
-    <p class="strong">서포터분들의 선택과 피드백을 첫 번째 기준으로 삼아, 앞으로 더 나은 제품을 만들어가겠습니다.</p>
+  <section class="story tint-soft">
+    <span class="label">WHY WADIZ</span>
+    <h2 class="t-h1">왜 와디즈인가?</h2>
+    <p class="t-body sub">MC2LAB의 첫 제품을 어디에서 가장 먼저 선보일지 고민했습니다.</p>
+    <p class="t-body sub">우리가 제품을 만들게 된 이유와 과정, 직접 확인한 결과까지 솔직하게 이야기할 수 있는 곳. 그리고 소비자와 가장 가까이에서 직접 반응을 확인할 수 있는 곳이 와디즈라고 생각했습니다.</p>
+    <p class="t-body sub">단순히 제품을 판매하는 것보다, 우리가 만든 제품이 실제 시장에서 어떤 평가를 받는지 솔직하게 확인하고 싶었습니다.</p>
+    <p class="t-body b">서포터분들의 선택과 피드백을 첫 번째 기준으로 삼아, 앞으로 더 나은 제품을 만들어가겠습니다.</p>
   </section>
 
   <!-- 14 고지 -->
@@ -448,11 +494,28 @@ section.ink .ph { background: repeating-linear-gradient(135deg, #1e1d22 0 14px, 
     </div>
     <div class="box">
       <strong>섭취 시 주의사항</strong>
-      <ul>
-        <li><span class="tbd">제품 표시사항의 섭취 시 주의사항을 그대로 입력</span></li>
-      </ul>
+      <ul><li><span class="tbd">제품 표시사항의 섭취 시 주의사항을 그대로 입력</span></li></ul>
     </div>
-    <p class="muted">본 제품은 질병의 예방 및 치료를 위한 의약품이 아닙니다.</p>
+    <p>본 제품은 질병의 예방 및 치료를 위한 의약품이 아닙니다.</p>
   </section>
 
 </main>
+
+<script>
+  // 리포좀 이중막의 인지질 머리 부분을 점으로 표시
+  (function () {
+    var g = document.getElementById("heads");
+    if (!g) return;
+    var ns = "http://www.w3.org/2000/svg";
+    [[176, 36, 7], [150, 30, 6]].forEach(function (ring) {
+      for (var i = 0; i < ring[1]; i++) {
+        var a = (i / ring[1]) * Math.PI * 2;
+        var c = document.createElementNS(ns, "circle");
+        c.setAttribute("cx", 220 + Math.cos(a) * ring[0]);
+        c.setAttribute("cy", 210 + Math.sin(a) * ring[0]);
+        c.setAttribute("r", ring[2]);
+        g.appendChild(c);
+      }
+    });
+  })();
+</script>
