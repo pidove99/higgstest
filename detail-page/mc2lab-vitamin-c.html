@@ -102,7 +102,7 @@ section.ink .ph { background: repeating-linear-gradient(135deg, #252428 0 calc(1
 .compare > div { border-radius: calc(28 * var(--u)); padding: calc(48 * var(--u)) calc(16 * var(--u)); display: flex; flex-direction: column; gap: calc(16 * var(--u)); align-items: center; background: #f5f3f0; }
 .compare > div:last-child { background: var(--orange); color: #fff; }
 .compare .k { font-size: calc(30 * var(--u)); font-weight: 700; }
-.compare .v { font-size: calc(72 * var(--u)); font-weight: 900; letter-spacing: -0.04em; line-height: 1; }
+.compare .v { font-size: calc(96 * var(--u)); font-weight: 900; letter-spacing: -0.04em; line-height: 1; }
 .compare > div:last-child .tbd { background: #fff; }
 
 /* 흐름 */
@@ -129,7 +129,7 @@ section.ink .ph { background: repeating-linear-gradient(135deg, #252428 0 calc(1
 /* 스펙 */
 .spec { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: calc(18 * var(--u)); }
 .spec > div { background: var(--card); border-radius: calc(32 * var(--u)); padding: calc(56 * var(--u)) calc(16 * var(--u)); display: flex; flex-direction: column; align-items: center; gap: calc(14 * var(--u)); }
-.spec .v { font-size: calc(76 * var(--u)); font-weight: 900; letter-spacing: -0.05em; line-height: 1; }
+.spec .v { font-size: calc(92 * var(--u)); font-weight: 900; letter-spacing: -0.05em; line-height: 1; }
 .spec .v small { font-size: 0.45em; margin-left: calc(4 * var(--u)); }
 .spec .k { font-size: calc(28 * var(--u)); color: var(--sub); }
 
@@ -160,7 +160,7 @@ section.ink .ph { background: repeating-linear-gradient(135deg, #252428 0 calc(1
 /* 결과 */
 .result-rows { width: 100%; display: flex; flex-direction: column; gap: calc(14 * var(--u)); }
 .result-rows div { display: flex; justify-content: space-between; align-items: center; background: var(--orange-tint); border-radius: calc(24 * var(--u)); padding: calc(36 * var(--u)) calc(44 * var(--u)); font-size: calc(34 * var(--u)); font-weight: 700; letter-spacing: -0.03em; }
-.result-rows .v { font-size: calc(56 * var(--u)); font-weight: 900; color: var(--orange-deep); font-variant-numeric: tabular-nums; }
+.result-rows .v { font-size: calc(76 * var(--u)); font-weight: 900; color: var(--orange-deep); font-variant-numeric: tabular-nums; }
 .meta { width: 100%; display: grid; grid-template-columns: auto 1fr; gap: calc(16 * var(--u)) calc(36 * var(--u)); text-align: left; font-size: calc(28 * var(--u)); padding: calc(40 * var(--u)) calc(44 * var(--u)); border: 2px solid var(--line); border-radius: calc(24 * var(--u)); }
 .meta dt { color: var(--muted); font-weight: 500; }
 .meta dd { margin: 0; font-weight: 700; }
@@ -178,6 +178,15 @@ section.ink .ph { background: repeating-linear-gradient(135deg, #252428 0 calc(1
 /* 스토리 */
 .story { align-items: stretch; text-align: left; }
 .story .t-body { text-wrap: pretty; }
+
+/* 3 POINT 요약 */
+.pts { width: 100%; display: flex; flex-direction: column; gap: calc(18 * var(--u)); }
+.pt { display: grid; grid-template-columns: calc(170 * var(--u)) 1fr; align-items: center; gap: calc(24 * var(--u)); background: var(--card); border-radius: calc(28 * var(--u)); padding: calc(40 * var(--u)) calc(44 * var(--u)); text-align: left; }
+.pt .n { font-family: var(--mono); font-size: calc(24 * var(--u)); font-weight: 700; letter-spacing: .1em; color: var(--orange); line-height: 1.3; }
+.pt .n strong { display: block; font-family: var(--font); font-size: calc(64 * var(--u)); font-weight: 900; letter-spacing: -0.04em; }
+.pt .t { font-size: calc(38 * var(--u)); font-weight: 900; letter-spacing: -0.03em; line-height: 1.35; }
+.pt .d { font-size: calc(28 * var(--u)); color: var(--sub); font-weight: 500; letter-spacing: -0.02em; }
+.point-tag { display: inline-block; background: var(--orange); color: #fff; font-family: var(--mono); font-weight: 700; font-size: calc(26 * var(--u)); letter-spacing: .12em; padding: calc(10 * var(--u)) calc(26 * var(--u)); border-radius: 999px; }
 
 /* 고지 */
 .notice { align-items: stretch; text-align: left; gap: calc(28 * var(--u)); padding-block: calc(90 * var(--u)); background: #f7f6f4; }
@@ -209,6 +218,17 @@ section.ink .ph { background: repeating-linear-gradient(135deg, #252428 0 calc(1
     <h2 class="t-h1">표기된 함량이 아니라,<br><span class="hl">실제 함량</span>을 확인하자.</h2>
   </section>
 
+  <!-- 3 POINT 요약 -->
+  <section class="tint-soft">
+    <span class="label">MC2LAB VITAMIN C</span>
+    <h2 class="t-h1">MC2LAB이 직접 확인한<br><span class="o">3가지</span></h2>
+    <div class="pts">
+      <div class="pt"><span class="n">POINT<strong>01</strong></span><span><span class="t">비타민C 실측 함량 공개</span><br><span class="d">표기 1,000mg · 완제품 시험기관 검사</span></span></div>
+      <div class="pt"><span class="n">POINT<strong>02</strong></span><span><span class="t">리포좀 기준 설정</span><br><span class="d">SIZE 100–200nm · PDI 0.2–0.3</span></span></div>
+      <div class="pt"><span class="n">POINT<strong>03</strong></span><span><span class="t">섭취 환경 시험</span><br><span class="d">위 환경 pH 1.2 · 장 환경 pH 6.8</span></span></div>
+    </div>
+  </section>
+
   <!-- 02 원칙 -->
   <section class="tint">
     <p class="t-body sub">새로운 성분을 더하는 것보다<br>먼저 확인하고 싶은 것이 있었습니다.</p>
@@ -225,12 +245,9 @@ section.ink .ph { background: repeating-linear-gradient(135deg, #252428 0 calc(1
   <!-- 03 실제 함량 -->
   <div class="ph"><b>IMAGE 02</b>제품 성분표의 비타민C 1,000mg을 확대해 보여주는 이미지</div>
   <section>
+    <span class="point-tag">POINT 01</span>
     <p class="t-body sub">적힌 함량이 아닌,</p>
-    <h2 class="t-h1"><span class="hl">실제로 검사한</span> 함량</h2>
-    <div class="stack">
-      <span class="label">VITAMIN C</span>
-      <span class="t-giant grad">1,000<small>mg</small></span>
-    </div>
+    <h2 class="t-hero"><span class="hl">실제로 검사한</span> 함량</h2>
     <p class="t-body">1,000mg이라고 적는 것으로<br><span class="b">끝내지 않습니다.</span></p>
     <p class="t-body sub">제품이 완성된 후<br>실제 비타민C 함량을 확인합니다.</p>
   </section>
@@ -254,7 +271,7 @@ section.ink .ph { background: repeating-linear-gradient(135deg, #252428 0 calc(1
   <section>
     <h2 class="t-h1">왜 굳이<br>검사까지 할까요?</h2>
     <div class="vline" aria-hidden="true"></div>
-    <p class="t-big grad">매일 먹는 것이니까.</p>
+    <p class="t-big">매일 먹는 것이니까.</p>
     <p class="t-h2">무엇이 들어있는지.<br>그리고 <span class="b">얼마나</span> 들어있는지.</p>
     <p class="t-body sub">적어도 우리가 먹는 제품만큼은<br>확인할 수 있어야 한다고 생각했습니다.</p>
   </section>
@@ -278,7 +295,7 @@ section.ink .ph { background: repeating-linear-gradient(135deg, #252428 0 calc(1
     <h2 class="t-h1">비타민C 1,000mg을<br>어떻게 만들 것인가.</h2>
     <div class="vline" aria-hidden="true"></div>
     <p class="t-body sub">우리가 선택한 다음 기준은</p>
-    <p class="t-big grad">전달을 고려한<br>설계</p>
+    <p class="t-hero"><span class="hl">전달을 고려한 설계</span></p>
   </section>
   <div class="ph"><b>IMAGE 05</b>VITAMIN C 1,000mg 숫자에서 리포좀 구조로 전환되는 이미지</div>
 
@@ -321,6 +338,7 @@ section.ink .ph { background: repeating-linear-gradient(135deg, #252428 0 calc(1
   <div class="ph"><b>IMAGE 06</b>크기와 균일도가 서로 다른 리포좀 입자 비교 이미지</div>
 
   <section class="tint">
+    <span class="point-tag">POINT 02</span>
     <h2 class="t-h1">리포좀도<br><span class="hl">기준부터</span> 정했습니다.</h2>
     <div class="spec">
       <div><span class="label">SIZE</span><span class="v grad">100–200<small>nm</small></span><span class="k">입자 크기</span></div>
@@ -371,7 +389,7 @@ section.ink .ph { background: repeating-linear-gradient(135deg, #252428 0 calc(1
 
   <!-- 08 시험 설계 -->
   <section class="ink">
-    <span class="label">TEST DESIGN</span>
+    <span class="point-tag">POINT 03</span>
     <h2 class="t-h1">만드는 데서 끝내지 않고,<br><span class="o">먹은 뒤의 환경까지.</span></h2>
     <p class="t-body sub">실제 섭취 이후의 환경을 고려해<br>리포좀 비타민C가 어떻게 변화하는지<br>확인합니다.</p>
     <div class="steps">
@@ -428,7 +446,7 @@ section.ink .ph { background: repeating-linear-gradient(135deg, #252428 0 calc(1
   <!-- 11 제품 -->
   <section>
     <p class="t-body sub">이것저것 더하기보다<br>먼저 하나에 집중하기로 했습니다.</p>
-    <h2 class="t-h1">그래서 첫 번째로<br><span class="hl">비타민C</span>를 선택했습니다.</h2>
+    <h2 class="t-h1">그래서 첫 번째로<br>비타민C를 선택했습니다.</h2>
     <div class="stack">
       <span class="label">VITAMIN C</span>
       <span class="t-giant grad">1,000<small>mg</small></span>
