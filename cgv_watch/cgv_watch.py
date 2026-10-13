@@ -161,10 +161,17 @@ def check_once(page, args):
         log(f"화면에서 '{args.movie}'를 찾지 못했습니다. 새로고침하면 영화 선택이 풀리는지 확인하세요.")
     # 날짜가 하나이고 새로고침하지 않으면 날짜 선택이 그대로 유지되므로 다시 누르지 않는다
     dates = args.date or [None]
-    click_dates = len(dates) > 1 or args.reload or bool(args.refresh_date)
+    click_dates = len(dates) > 1 or args.reload or bool(args.refresh_date) or bool(args.refresh_theater)
 
     result, dumps = {}, {}
     for date in dates:
+        if args.refresh_theater:
+            # 감시할 극장에 아직 그 날짜 회차가 없으면 날짜 버튼이 안 눌린다.
+            # 그 날짜가 열려 있는 다른 극장을 먼저 눌러 두고 날짜를 고른다 (이 극장 결과는 보지 않음)
+            if click_text(page, args.refresh_theater):
+                settle(page, 0.5, idle_timeout=2)
+            else:
+                log(f"도우미 극장 '{args.refresh_theater}' 버튼을 찾지 못했습니다.")
         if args.refresh_date:
             # 시간표를 확실히 새로 불러오도록 다른 날짜를 먼저 눌렀다가 돌아온다 (그 날짜 결과는 보지 않음)
             if click_text(page, args.refresh_date):
@@ -364,6 +371,8 @@ def parse_args():
                    help="확인할 날짜 버튼 (예: 30). 여러 번 지정하면 날짜마다 번갈아 확인")
     p.add_argument("--refresh-date",
                    help="매 바퀴 먼저 눌렀다가 --date 로 돌아올 날짜 버튼 (시간표 새로고침용, 결과는 보지 않음)")
+    p.add_argument("--refresh-theater",
+                   help="매 바퀴 날짜를 누르기 전에 먼저 누를 극장 (그 날짜가 열려 있는 극장). 결과는 보지 않음")
     p.add_argument("--exclude", action="append", default=[],
                    help="회차 칸에 이 글자가 있으면 무시 (예: 무대인사). 여러 번 지정 가능")
     p.add_argument("--from", dest="start_s", default="00:00", help="회차 시작 시각 하한 (예: 06:00)")
