@@ -41,7 +41,22 @@ def to_minutes(hhmm):
     return int(h) * 60 + int(m)
 
 
-def start_times(text, exclude=()):
+# 시간표에서 상영 형식 묶음 제목으로 쓰이는 줄 (예: "2D", "4DX", "IMAX")
+FORMAT_HEADER = re.compile(
+    r"^(2D|3D|4DX|ULTRA ?4DX|IMAX|SCREENX|DOLBY|SPHEREX|SOUNDX|SWEETBOX|STARIUM|LASER|PRIVATE|TEMPUR|GOLD ?CLASS)\b",
+    re.I)
+
+
+def section_before(text, pos):
+    """pos 앞쪽에서 가장 가까운 상영 형식 묶음 제목 줄을 돌려준다."""
+    for line in reversed(text[:pos].split("\n")):
+        line = line.strip()
+        if len(line) <= 30 and FORMAT_HEADER.match(line):
+            return line
+    return ""
+
+
+def start_times(text, exclude=(), only=()):
     """화면 텍스트에서 회차 시작 시각 목록을 뽑는다. 'HH:MM ~ HH:MM' 형식이면 앞쪽만 쓴다.
 
     exclude 에 든 글자(예: 무대인사)가 그 회차 칸에 적혀 있으면 뺀다.
@@ -53,8 +68,19 @@ def start_times(text, exclude=()):
     found = []
     for i, m in enumerate(matches):
         end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
-        if any(word in text[m.start():end] for word in exclude):
+        card = text[m.start():end]
+        # 다음 상영 형식 제목(예: "4DX")부터는 다음 묶음이므로 이 회차 칸에서 뺀다
+        lines = card.split("\n")
+        for i, line in enumerate(lines[1:], 1):
+            if len(line.strip()) <= 30 and FORMAT_HEADER.match(line.strip()):
+                card = "\n".join(lines[:i])
+                break
+        if any(word in card for word in exclude):
             continue
+        if only:
+            where = (card + "\n" + section_before(text, m.start())).upper()
+            if not any(word.upper() in where for word in only):
+                continue
         found.append(f"{int(m.group(1)):02d}:{m.group(2)}")
     return sorted(set(found))
 
@@ -193,7 +219,7 @@ def check_once(page, args):
             settle(page, args.settle, idle_timeout=3)
             text = page_text(page)
             dumps[label] = text
-            times = start_times(text, args.exclude)
+            times = start_times(text, args.exclude, args.only)
             result[label] = [t for t in times if args.start <= to_minutes(t) <= args.end]
     return result, dumps
 
@@ -373,6 +399,8 @@ def parse_args():
                    help="매 바퀴 먼저 눌렀다가 --date 로 돌아올 날짜 버튼 (시간표 새로고침용, 결과는 보지 않음)")
     p.add_argument("--refresh-theater",
                    help="매 바퀴 날짜를 누르기 전에 먼저 누를 극장 (그 날짜가 열려 있는 극장). 결과는 보지 않음")
+    p.add_argument("--only", action="append", default=[],
+                   help="이 글자가 회차 칸이나 상영 형식 제목(예: 4DX)에 있는 회차만 봄. 여러 번 지정 가능")
     p.add_argument("--exclude", action="append", default=[],
                    help="회차 칸에 이 글자가 있으면 무시 (예: 무대인사). 여러 번 지정 가능")
     p.add_argument("--from", dest="start_s", default="00:00", help="회차 시작 시각 하한 (예: 06:00)")
