@@ -41,9 +41,10 @@ def to_minutes(hhmm):
     return int(h) * 60 + int(m)
 
 
-# 시간표에서 상영 형식 묶음 제목으로 쓰이는 줄 (예: "2D", "4DX", "IMAX")
+# 시간표에서 상영 형식 묶음 제목으로 쓰이는 줄 (예: "2D", "4DX관", "IMAX")
 FORMAT_HEADER = re.compile(
-    r"^(2D|3D|4DX|ULTRA ?4DX|IMAX|SCREENX|DOLBY|SPHEREX|SOUNDX|SWEETBOX|STARIUM|LASER|PRIVATE|TEMPUR|GOLD ?CLASS)\b",
+    r"^(2D|3D|4DX|ULTRA ?4DX|IMAX|SCREENX|DOLBY|SPHEREX|SOUNDX|SWEETBOX|STARIUM|LASER|PRIVATE|TEMPUR|GOLD ?CLASS)"
+    r"(관)?(?![A-Za-z0-9가-힣])",
     re.I)
 
 
@@ -56,7 +57,11 @@ def section_before(text, pos):
     return ""
 
 
-def start_times(text, exclude=(), only=()):
+# 회차 칸에 이런 글자가 있으면 아직 예매할 수 없는 회차로 본다
+NOT_BOOKABLE = re.compile(r"예매\s*대기|오픈\s*예정|예매\s*예정|준비\s*중|매진(?!\s*임박)|(?<!\d)0\s*석")
+
+
+def start_times(text, exclude=(), only=(), bookable=False):
     """화면 텍스트에서 회차 시작 시각 목록을 뽑는다. 'HH:MM ~ HH:MM' 형식이면 앞쪽만 쓴다.
 
     exclude 에 든 글자(예: 무대인사)가 그 회차 칸에 적혀 있으면 뺀다.
@@ -76,6 +81,8 @@ def start_times(text, exclude=(), only=()):
                 card = "\n".join(lines[:i])
                 break
         if any(word in card for word in exclude):
+            continue
+        if bookable and NOT_BOOKABLE.search(card):
             continue
         if only:
             where = (card + "\n" + section_before(text, m.start())).upper()
@@ -219,7 +226,7 @@ def check_once(page, args):
             settle(page, args.settle, idle_timeout=3)
             text = page_text(page)
             dumps[label] = text
-            times = start_times(text, args.exclude, args.only)
+            times = start_times(text, args.exclude, args.only, args.bookable)
             result[label] = [t for t in times if args.start <= to_minutes(t) <= args.end]
     return result, dumps
 
@@ -399,6 +406,8 @@ def parse_args():
                    help="매 바퀴 먼저 눌렀다가 --date 로 돌아올 날짜 버튼 (시간표 새로고침용, 결과는 보지 않음)")
     p.add_argument("--refresh-theater",
                    help="매 바퀴 날짜를 누르기 전에 먼저 누를 극장 (그 날짜가 열려 있는 극장). 결과는 보지 않음")
+    p.add_argument("--bookable", action="store_true",
+                   help="지금 예매할 수 있는 회차만 셈 (예매대기·오픈예정·매진 칸은 뺌). --new-only와 함께 쓰면 예매가 열리는 순간 알림")
     p.add_argument("--only", action="append", default=[],
                    help="이 글자가 회차 칸이나 상영 형식 제목(예: 4DX)에 있는 회차만 봄. 여러 번 지정 가능")
     p.add_argument("--exclude", action="append", default=[],
