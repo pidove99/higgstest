@@ -1,11 +1,29 @@
 {
   "version": 1,
   "skills": {
+    "atlas-cloud": {
+      "source": "AtlasCloudAI/atlas-cloud-skills",
+      "sourceType": "github",
+      "skillPath": "atlas-cloud/SKILL.md",
+      "computedHash": "80c6a3c1419356b213f525ddd1d53f9a07d6515c2f1ada29235cd9708e9af617"
+    },
     "kling-3-prompthing": {
       "source": "aedev-tools/kling-3-prompting-skill",
       "sourceType": "github",
       "skillPath": "skills/kling-3-prompting/SKILL.md",
       "computedHash": "9766ade65c0c2eb8b7807f2198440ed4e6a1bb3ffef313028405db562e20b803"
+    },
+    "seedance-2-5-skill": {
+      "source": "AtlasCloudAI/awesome-seedance-2.5-prompts-skills",
+      "sourceType": "github",
+      "skillPath": "skills/seedance-2-5-skill/SKILL.md",
+      "computedHash": "a3b71c0860f120b54ff9ea8397e7639e2368695a6b6fc7b1de6973c31f83af80"
+    },
+    "universal-video-prompt-skill": {
+      "source": "AtlasCloudAI/awesome-seedance-2.5-prompts-skills",
+      "sourceType": "github",
+      "skillPath": "skills/universal-video-prompt-skill/SKILL.md",
+      "computedHash": "42765af804fee2bd4a1348d78765965cb77c4be1f79127eda90b6b83e47a5b19"
     }
   }
 }
