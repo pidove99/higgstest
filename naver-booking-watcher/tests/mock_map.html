@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>mock 네이버지도</title>
+<style>body{margin:0;display:flex;font-family:sans-serif}#side{width:70px;background:#fff;border-right:1px solid #ddd}
+iframe{width:450px;height:1200px;border:0}#map{flex:1;background:#e8eee4}</style></head>
+<body><div id="side">지도 홈<br>길찾기<br>버스<br>지하철</div>
+<!-- 실제 네이버지도처럼 예약 패널이 iframe 안에 있음 -->
+<iframe id="entryIframe"></iframe><div id="map">지도 영역 1 2 3</div>
+<script>document.getElementById('entryIframe').src = 'mock_booking.html' + location.search;</script>
+</body></html>

@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>mock 예약</title>
+<style>
+body{font-family:sans-serif;margin:0;padding:16px;width:410px}
+.tabs button{width:48%;padding:10px}.month{text-align:center;font-size:22px;font-weight:bold;margin:12px}
+.grid{display:grid;grid-template-columns:repeat(7,58px);gap:0}.grid>*{height:56px;text-align:center}
+.wk{line-height:56px;color:#444}
+.calendar_date{background:none;border:0;font-size:16px;color:#333;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.calendar_date.dayoff{color:#ccc}.calendar_date.selected{background:#03c75a;color:#fff;border-radius:8px}
+.calendar_date small{font-size:10px;color:#aaa}
+.times{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.btn_time{padding:12px 0;border:1px solid #ddd;background:#fff;color:#222;border-radius:6px;font-size:15px}
+.btn_time.unselectable{color:#bbb;border-color:#eee}
+.btn_time.c-gray{color:#c4c4c4;border-color:#eee}
+.btn_time.selected{background:#03c75a;color:#fff}
+.notice{height:600px;background:#f7f7f7;margin:20px 0;padding:10px}
+.next{width:100%;padding:14px;font-size:16px;border:0;border-radius:8px;background:#03c75a;color:#fff}
+.next:disabled{background:#c8c8c8}
+</style></head><body>
+<div id="app"></div>
+<script>
+const q = new URLSearchParams(location.search);
+const MODE = q.get('mode') || 'class';          // class | color
+const OPEN_AFTER = +(q.get('openAfter') || 6);  // 몇 초 뒤 취소표 발생
+const OPEN_OFFSET = +(q.get('openOffset') || 2);// 오늘로부터 며칠 뒤 날짜
+const OPEN_TIME = q.get('openTime') || '오후 3:00';
+const t0 = Date.now();
+const now = new Date(); const Y = now.getFullYear(), M = now.getMonth(), D = now.getDate();
+const openDay = D + OPEN_OFFSET;
+const times = []; for (let m = 630; m <= 1260; m += 30) { const h = Math.floor(m/60), mm = m%60;
+  times.push((h<12?'오전 ':'오후 ') + (h%12||12) + ':' + String(mm).padStart(2,'0')); }
+let sel = D, selTime = null;
+const isOpen = (d, t) => d === openDay && t === OPEN_TIME && (Date.now()-t0)/1000 > OPEN_AFTER;
+function render() {
+  const first = new Date(Y, M, 1).getDay(), last = new Date(Y, M+1, 0).getDate();
+  let h = `<div class="tabs"><button>예약하기</button><button>상세정보</button></div>
+    <div class="month"><button aria-label="이전달">&lt;</button> <span>${Y}.${M+1}</span> <button aria-label="다음달">&gt;</button></div>
+    <div class="grid">${['일','월','화','수','목','금','토'].map(w=>`<div class="wk">${w}</div>`).join('')}`;
+  for (let i=0;i<first;i++) h += '<div></div>';
+  for (let d=1; d<=last; d++) {
+    const open = d >= D && d <= D+3; const sold = open && !(d===openDay && (Date.now()-t0)/1000 > OPEN_AFTER);
+    const cls = 'calendar_date' + (open?'':' dayoff') + (d===sel?' selected':'');
+    h += `<button class="${cls}" ${open?'':'disabled'} data-d="${d}"><span>${d===D?'오늘':d}</span>${sold?'<small>매진</small>':''}</button>`;
+  }
+  const nextLen = (first+last)%7 ? 7-(first+last)%7 : 0;
+  for (let i=1;i<=nextLen;i++) h += `<button class="calendar_date dayoff" disabled><span>${i}</span></button>`;
+  h += `</div><p>회차를 선택하세요.</p><div class="times" id="times"></div>
+    <div class="notice">예약 전 반드시 확인하세요! 꼭 확인해 주세요! 1인 1매</div>
+    <button class="next" id="next" ${selTime?'':'disabled'}>다음</button>`;
+  document.getElementById('app').innerHTML = h;
+  document.querySelectorAll('.calendar_date[data-d]').forEach(b => b.onclick = () => {
+    if (b.disabled) return; sel = +b.dataset.d; selTime = null; render();
+    setTimeout(renderTimes, 300);   // 회차 API 로딩 흉내
+  });
+  renderTimes();
+  document.getElementById('next').onclick = () => {
+    document.getElementById('app').innerHTML = `<h2 id="done">예약자 정보 입력</h2><p>${Y}.${M+1}.${sel} ${selTime}</p>`;
+  };
+}
+function renderTimes() {
+  const box = document.getElementById('times'); if (!box) return;
+  box.innerHTML = times.map(t => {
+    const ok = isOpen(sel, t);
+    if (MODE === 'class') return `<button class="btn_time ${ok?'':'unselectable'}${t===selTime?' selected':''}" ${ok?'':'disabled'}>${t}</button>`;
+    return `<button class="btn_time ${ok?'':'c-gray'}${t===selTime?' selected':''}">${t}</button>`;  // 색으로만 구분
+  }).join('');
+  box.querySelectorAll('.btn_time').forEach(b => b.onclick = () => {
+    if (!isOpen(sel, b.textContent)) return;
+    selTime = b.textContent; renderTimes(); document.getElementById('next').disabled = false;
+  });
+}
+render();
+</script></body></html>
