@@ -13,17 +13,14 @@
 
 ## 1. 설치 (처음 한 번)
 
-1. Python 3.9 이상 설치 (설치할 때 **Add python.exe to PATH** 체크)
-2. 이 폴더에서 명령 프롬프트를 열고:
+1. 이 폴더(`naver-booking-watcher`)를 PC에 받습니다. GitHub에서 **Code → Download ZIP**을 누르고 압축을 풉니다.
+2. 폴더 안의 **`install_windows.bat`을 더블클릭**합니다.
+   - 파이썬이 없으면 다운로드 페이지가 열립니다. 설치 첫 화면에서 **"Add python.exe to PATH"를 꼭 체크**하고 설치한 뒤, 다시 더블클릭하세요.
+
+직접 명령어로 설치할 때는 `pip` 대신 아래 명령을 쓰세요. (`pip`이 인식되지 않는 경우가 많습니다.)
 
 ```bash
-pip install -r requirements.txt
-```
-
-PC에 깔린 **Chrome**을 그대로 씁니다. Chrome이 없으면 아래 명령을 한 번 실행하세요.
-
-```bash
-playwright install chromium
+py -m pip install playwright
 ```
 
 ## 2. 사용법
