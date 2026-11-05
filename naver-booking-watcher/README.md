@@ -11,7 +11,31 @@
 
 ---
 
-## 1. 설치 (처음 한 번)
+## ⭐ 가장 쉬운 방법: 크롬에서 바로 쓰기 (설치 프로그램 없음)
+
+파이썬 없이 크롬 확장 **Tampermonkey**만 있으면 됩니다. GitHub에 있는 스크립트를 자동으로 불러오고, 파일이 수정되면 자동으로 업데이트됩니다.
+
+1. 크롬 웹스토어에서 **Tampermonkey**를 설치합니다.
+2. 크롬 주소창에 `chrome://extensions`를 입력합니다. Tampermonkey의 **세부정보**를 열고 **"사용자 스크립트 허용"**을 켭니다. 이 항목이 없으면 오른쪽 위 **개발자 모드**를 켜세요.
+3. 아래 링크를 클릭하면 Tampermonkey 설치 화면이 뜹니다. **설치**를 누르세요.
+
+   👉 [https://raw.githubusercontent.com/pidove99/higgstest/claude/vibrant-gauss-vxmb9k/naver-booking-watcher/naver-booking-watcher.user.js](https://raw.githubusercontent.com/pidove99/higgstest/claude/vibrant-gauss-vxmb9k/naver-booking-watcher/naver-booking-watcher.user.js)
+
+4. 네이버지도에서 매장 → **예약하기**를 엽니다. 달력이 보이면 오른쪽 아래에 **🎫 취소표 자동 잡기** 패널이 나타납니다.
+5. 요일·시간대를 고르고 **▶ 시작**을 누릅니다.
+
+자리를 잡으면 회차를 선택하고 `다음`까지 누른 뒤, 알림음·바탕화면 알림·탭 제목 깜빡임으로 알려줍니다.
+
+- 패널 설정(요일, 시간대, 간격, 새로고침 주기, `다음` 자동 클릭)은 저장됩니다.
+- 새로고침한 뒤에도 감시를 자동으로 이어갑니다.
+- 감시하는 동안 그 탭을 닫지 마세요. 다른 탭을 봐도 되지만, 크롬이 백그라운드 탭을 느리게 돌릴 수 있으니 **예약 탭을 별도 창으로 띄워두는 것**이 가장 안정적입니다.
+- 알림음이 안 나면 탭에서 소리가 음소거돼 있는지 확인하세요.
+
+아래 2~4장은 파이썬 버전 설명입니다. 크롬 버전으로 충분하면 읽지 않아도 됩니다.
+
+---
+
+## 1. (파이썬 버전) 설치
 
 1. 이 폴더(`naver-booking-watcher`)를 PC에 받습니다. GitHub에서 **Code → Download ZIP**을 누르고 압축을 풉니다.
 2. 폴더 안의 **`install_windows.bat`을 더블클릭**합니다.
