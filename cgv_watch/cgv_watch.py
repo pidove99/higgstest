@@ -432,6 +432,7 @@ def parse_args():
     p.add_argument("--seat", action="append", default=[],
                    help="매진 풀림 감시: '극장=시각,시각' (예: 용산아이파크몰=08:20,11:10). 여러 번 지정")
     p.add_argument("--ntfy", help="휴대폰 ntfy 앱에서 구독한 주제 이름. 알림을 휴대폰/스마트워치로도 보냄")
+    p.add_argument("--once", action="store_true", help="한 번 알리면 감시를 멈추고 종료 (--new-only 와 함께)")
     p.add_argument("--keep", action="store_true", help="발견 후에도 계속 감시 (새로 생긴 회차만 알림)")
     p.add_argument("--no-open", action="store_true", help="발견 시 기본 브라우저로 페이지를 열지 않음")
     p.add_argument("--dump", action="store_true", help="한 번만 확인하고 극장별 화면 텍스트를 page_dump.txt로 저장")
@@ -565,7 +566,8 @@ def main():
                             return
                         seen.update((th, t) for th, ts in new.items() for t in ts)
                         pending -= seen
-                        if not (args.keep or args.new_only):
+                        if args.once or not (args.keep or args.new_only):
+                            log("알림을 보냈으니 감시를 멈춥니다.")
                             return
                     else:
                         log("아직 없음 (" + ", ".join(f"{th} {len(ts)}" for th, ts in result.items()) + ")")
