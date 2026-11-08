@@ -149,6 +149,25 @@ def open_showtime(page, args, label, hhmm):
     return False
 
 
+def stop_key_pressed():
+    """명령 창에서 q 를 눌렀는지 확인한다 (Windows 전용, 기다리지 않음)."""
+    try:
+        import msvcrt
+    except ImportError:
+        return False
+    pressed = False
+    while msvcrt.kbhit():
+        if msvcrt.getwch().lower() in ("q", "ㅂ"):
+            pressed = True
+    return pressed
+
+
+def keep_browser_open(reason):
+    """감시만 멈추고 크롬 창은 열어 둔다. Enter 를 누를 때까지 기다린다."""
+    log(reason)
+    input("크롬 창은 그대로 둡니다. 예매·결제를 다 마치면 여기서 Enter를 눌러 종료하세요.\n")
+
+
 def hold_window(opened):
     """좌석 화면을 연 브라우저가 닫히지 않도록 사용자가 끝낼 때까지 기다린다."""
     if opened:
@@ -524,11 +543,15 @@ def main():
 
             window = f"{args.start_s}~{args.end_s}"
             log(f"감시 시작: {', '.join(args.theater)} / 시작시각 {window} / {args.interval:g}초 쉬고 반복 (Ctrl+C로 종료)")
+            print("(감시를 멈추고 크롬 창을 그대로 두려면 이 창에서 q 를 누르세요)")
             seen = set()
             based = set()  # --new-only: 처음 확인한 회차를 기준으로 기록한 극장
             first = {}  # --earlier-only: 극장별 기준 첫 회차
             pending = set()  # --new-only: 한 번 보인 새 회차 (다음 바퀴에도 보이면 알림)
             while True:
+                if stop_key_pressed():
+                    keep_browser_open("q 를 눌러 감시를 멈췄습니다.")
+                    return
                 try:
                     result, _ = check_once(page, args)
                     if args.new_only:
@@ -567,7 +590,7 @@ def main():
                         seen.update((th, t) for th, ts in new.items() for t in ts)
                         pending -= seen
                         if args.once or not (args.keep or args.new_only):
-                            log("알림을 보냈으니 감시를 멈춥니다.")
+                            keep_browser_open("알림을 보냈으니 감시를 멈춥니다.")
                             return
                     else:
                         log("아직 없음 (" + ", ".join(f"{th} {len(ts)}" for th, ts in result.items()) + ")")
