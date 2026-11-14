@@ -162,6 +162,18 @@ def stop_key_pressed():
     return pressed
 
 
+def show_theater(page, args, label):
+    """알림 뒤 크롬 창에 새 회차가 열린 극장 시간표를 띄워 둔다. 회차는 누르지 않는다."""
+    date, theater = args.targets[label]
+    try:
+        if date and len(args.date) > 1:
+            click_text(page, date)
+            settle(page, 0.5, idle_timeout=2)
+        click_text(page, theater)
+    except Exception as e:
+        log(f"극장 화면 전환 실패: {e!r}")
+
+
 def keep_browser_open(reason):
     """감시만 멈추고 크롬 창은 열어 둔다. Enter 를 누를 때까지 기다린다."""
     log(reason)
@@ -580,8 +592,11 @@ def main():
                         if args.open_seat:
                             t, th = min((ts[0], th) for th, ts in new.items())
                             opened = open_showtime(page, args, th, t)
+                        elif args.once:
+                            # 찾은 극장 시간표를 띄워 두고 그 뒤로는 아무것도 누르지 않는다
+                            show_theater(page, args, min(new))
                         notify("CGV 회차 오픈!", msg)
-                        if not args.no_open and not args.open_seat:
+                        if not args.no_open and not args.open_seat and not args.once:
                             webbrowser.open(args.url)
                         beep(5)
                         if opened is not None:
